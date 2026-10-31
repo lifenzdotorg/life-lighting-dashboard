@@ -497,7 +497,7 @@ function Card({
 					))}
 				</div>
 			)}
-			{look.lands !== null && <Lands lands={look.lands} names={columnNames} big={big} />}
+			{look.lands !== null && <Lands lands={look.lands} names={columnNames} big={big} why={look.note === null} />}
 			{look.note !== null && <p className="rounded-ctl bg-warn/10 px-2.5 py-1.5 text-sm text-warn">{look.note}</p>}
 			{look.lands !== null && strays.length > 0 && (
 				<p className="rounded-ctl bg-warn/10 px-2.5 py-1.5 text-sm text-warn">
@@ -1053,7 +1053,7 @@ function LandingMap({
 				<b className="font-bold text-booth-ink">{nameOf(chosenLook)}</b>
 				{chosenLook.lands !== null ? ` ${chosenLook.lands.replaces !== null ? 'lands in' : 'is in'} ${columnName(names, chosenLook.lands.column)}` : ' has no spot yet'}
 				{chosenLook.lands?.replaces != null && (chosenLook.lands.replaces === 'empty' ? ' · into an empty clip' : ` · replaces ${chosenLook.lands.replaces}`)}
-				{chosenLook.lands?.why === 'moved' && ' · moved for this service'}
+				{(chosenLook.note ?? chosenLook.lands?.because ?? null) !== null && ` · Why: ${chosenLook.note ?? chosenLook.lands?.because}`}
 				{operator && (lit.size > 0 ? '. Tap a lit column to move it; on another moment’s, the two swap.' : '. Nowhere free to move it.')}
 			</>
 		) : (
@@ -1279,8 +1279,10 @@ function MapRow({
 }
 
 /** Where a moment lands, in words over a strip of Arena's columns with its
- *  own lit: anyone reads it, Arena or not. */
-function Lands({ lands, names, big }: { lands: Landing; names: string[]; big: boolean }) {
+ *  own lit: anyone reads it, Arena or not. Then why it lands there (the owner,
+ *  2026-11-01, from the Holding map research: "why here?" answered on every
+ *  card), unless the card's note already says. */
+function Lands({ lands, names, big, why }: { lands: Landing; names: string[]; big: boolean; why: boolean }) {
 	const where = lands.name === '' ? `column ${lands.column}` : lands.name
 	const extra = lands.name === '' ? null : `column ${lands.column}`
 	const going = lands.replaces !== null
@@ -1308,6 +1310,12 @@ function Lands({ lands, names, big }: { lands: Landing; names: string[]; big: bo
 				{extra !== null && ` · ${extra}`}
 				{replaces !== null && ` · ${replaces}`}
 			</p>
+			{why && lands.because !== null && (
+				<p className={`min-w-0 text-booth-dim ${big ? 'text-base' : 'text-sm'}`}>
+					<span className="mr-1.5 text-xs font-bold tracking-wide text-accent-hi uppercase">Why</span>
+					{lands.because}
+				</p>
+			)}
 		</div>
 	)
 }

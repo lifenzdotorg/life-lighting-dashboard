@@ -431,6 +431,19 @@ function labelColumn(item: LookbookItem, names: string[]): number | null {
 	return item.label !== null && norm(item.label) !== '' ? find(norm(item.label)) : null
 }
 
+/** Why `namedColumn` gave an item `column`, in a card's words (the owner,
+ *  2026-11-01: the "why here" line, from the Holding map research). */
+function namedWhy(item: LookbookItem, names: string[], column: number): string {
+	const name = names[column]?.trim() ?? ''
+	const label = item.label?.trim() ?? ''
+	if (titlePre(item) || titlePost(item)) return `Its title, "${item.title.trim()}", means ${name}`
+	if (labelPre(item) || labelPost(item)) return label.toUpperCase() === name.toUpperCase() ? `Labelled ${label}` : `Labelled "${label}", which means ${name}`
+	if (isPreach(item) && norm(name) === 'PREACH') return 'It is the message, so PREACH'
+	return `Labelled ${label}`
+}
+
+const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`
+
 /** When the title put a moment in PRE or POST and its label says another
  *  column, the words for its card; else null. */
 function titleClash(item: LookbookItem, names: string[], column: number): string | null {
@@ -524,6 +537,9 @@ export function planPlacements(
 	settled: Settled[]
 	/** What a moment's card says beside where it lands, by item. */
 	notes: Map<number, string>
+	/** Why each placed item is where it is, in a card's words, by item: its
+	 *  label, its title, the PROMO queue, moved by hand (the "why here" line). */
+	because: Map<number, string>
 } {
 	const today = codesOn(items)
 	const layerOf = (type: string) => layerFor(status, type)
@@ -571,10 +587,14 @@ export function planPlacements(
 		const who = other.label === null || other.label === other.title ? other.title : `${other.title} (${other.label})`
 		columnOf.set(i, { none: 'taken', detail: `${columnWords(names[column] ?? '', column + 1)} is already ${who}'s; place it by hand` })
 	}
+	/** Why each item lands where it does, in a card's words (`because`). */
+	const because = new Map<number, string>()
 	// Pins first, so a column placed by hand is never another item's by rule.
 	for (const [i, column] of [...pinned].sort((a, b) => a[0] - b[0])) {
 		if (arenaCodes(items[i] as LookbookItem, map).length > 0) claim(i, column, 'chosen')
 	}
+	const moved = (i: number) => because.set(i, 'Moved by hand for this service')
+	for (const i of pinned.keys()) moved(i)
 	const poolOf = new Map<number, { columns: number[]; promo: boolean; oneOff?: true }>()
 	/** What a card says beside where its moment lands (a label that clashes
 	 *  with its title; a column found by where its code already is). */
@@ -589,10 +609,13 @@ export function planPlacements(
 		}
 		const mine = custom.filter((c) => takesItem(c.takes, item)).map((c) => c.column)
 		const named = mine.length === 0 ? namedColumn(item, autoNames) : null
-		if (mine.length === 1) claim(i, mine[0] as number, 'named')
-		else if (mine.length > 1) poolOf.set(i, { columns: mine, promo: false })
+		if (mine.length === 1) {
+			claim(i, mine[0] as number, 'named')
+			because.set(i, `This booth's Holding map sends it to ${names[mine[0] as number]?.trim() ?? ''}`)
+		} else if (mine.length > 1) poolOf.set(i, { columns: mine, promo: false })
 		else if (named !== null) {
 			claim(i, named, 'named')
+			because.set(i, namedWhy(item, autoNames, named))
 			const clash = titleClash(item, autoNames, named)
 			if (clash !== null) notes.set(i, clash)
 			const got = columnOf.get(i)
@@ -626,6 +649,7 @@ export function planPlacements(
 		columnOf.delete(i)
 		claim(i, at, 'named')
 		const said = item.label === null || item.label.trim() === '' ? 'has no label' : `is labelled "${item.label.trim()}"`
+		because.set(i, `Kept in ${names[at]?.trim() ?? ''}, where ${piece.code} already is`)
 		notes.set(i, `${item.title.trim()} ${said}${was !== undefined && 'none' in was ? `, and ${was.detail.replace(/; place it by hand$/, '')}` : ''}; kept in ${names[at]?.trim() ?? ''}, where ${piece.code} already is`)
 	}
 	for (const i of rest) {
@@ -661,6 +685,7 @@ export function planPlacements(
 			if (best !== null) {
 				takenPromo.add(best.column)
 				columnOf.set(i, { column: best.column, why })
+				because.set(i, `This booth's Holding map shares it among ${(poolOf.get(i)?.columns ?? []).map((c) => names[c]?.trim()).join(', ')}; ${why === 'promo-alike' ? 'it is already here' : why === 'promo-free' ? 'this one was free' : 'this one was empty'}`)
 			}
 		}
 	}
@@ -702,6 +727,13 @@ export function planPlacements(
 		nextPromo += 1
 		takenPromo.add(column)
 		columnOf.set(i, { column, why: 'promo' })
+		const item = items[i] as LookbookItem
+		because.set(
+			i,
+			poolOf.get(i)?.oneOff === true
+				? `No column takes "${(item.label ?? item.title).trim()}", so it joins the announcements in line for PROMO: ${ordinal(nextPromo)} in line, in run-sheet order`
+				: `An announcement, so in line for PROMO: ${ordinal(nextPromo)} in line, in run-sheet order`,
+		)
 	}
 	for (const i of promoItems) {
 		if (columnOf.has(i)) continue
@@ -976,11 +1008,20 @@ export function planPlacements(
 	const columns = new Map<number, number>()
 	const whys = new Map<number, Placement['why']>()
 	for (const [i, where] of columnOf) {
-		if ('none' in where) continue
+		if ('none' in where) {
+			because.delete(i)
+			// A one-off: into a spare column past the named ones, or where it
+			// already sits on its layer.
+			if (where.none !== 'no-column' && where.none !== 'no-promo') continue
+			const why = where.detail.charAt(0).toUpperCase() + where.detail.slice(1)
+			if (placements.some((p) => p.item === i && p.why === 'overflow')) because.set(i, `${why}: the first spare column past the named ones`)
+			else if (placements.some((p) => p.item === i && p.why === 'follows') || settled.some((x) => x.item === i && x.why === 'on-layer')) because.set(i, `${why}: it stays where it already is`)
+			continue
+		}
 		columns.set(i, where.column)
 		whys.set(i, where.why)
 	}
-	return { placements, unplaced, columns, whys, names, settled, notes }
+	return { placements, unplaced, columns, whys, names, settled, notes, because }
 }
 
 /** The background the rest of the service uses (the owner, 2026-10-06): the
@@ -1299,11 +1340,14 @@ export type Landing = {
 	/** What loading replaces there: a code, else the clip's name; 'empty' for an
 	 *  empty clip; null when its piece is there already. */
 	replaces: string | null
+	/** Why it lands there, in a card's words (its label, its title, the PROMO
+	 *  queue, moved by hand); null when the plan has nothing to say. */
+	because: string | null
 }
 
 /** Every run-sheet item as a look: what each of its codes is in Arena. */
 export function looksOf(items: LookbookItem[], status: ArenaStatus, marks: ReadonlySet<string>, sizes?: FileSizes, map: HoldingMap = DEFAULT_MAP, pins: readonly Pin[] = []): Look[] {
-	const { placements, unplaced, columns, whys, names, settled, notes } = planPlacements(items, status, map, pins)
+	const { placements, unplaced, columns, whys, names, settled, notes, because } = planPlacements(items, status, map, pins)
 	const today = codesOn(items)
 	const landing = (i: number): Landing | null => {
 		const mine = placements.filter((p) => p.item === i)
@@ -1312,12 +1356,12 @@ export function looksOf(items: LookbookItem[], status: ArenaStatus, marks: Reado
 		const column = columns.get(i)
 		if (column !== undefined) {
 			const why = whys.get(i)
-			return { column: column + 1, name: unnamed(names[column] ?? '') ? '' : (names[column] ?? ''), why: why === 'named' ? 'own' : why === 'chosen' ? 'moved' : 'promo', replaces }
+			return { column: column + 1, name: unnamed(names[column] ?? '') ? '' : (names[column] ?? ''), why: why === 'named' ? 'own' : why === 'chosen' ? 'moved' : 'promo', replaces, because: because.get(i) ?? null }
 		}
 		// A one-off: where its foreground goes past the named columns, or sits.
 		const spare = key?.why === 'overflow' || key?.why === 'follows' ? key.column : settled.find((x) => x.item === i && x.why === 'on-layer')?.column
 		if (spare === undefined) return null
-		return { column: spare, name: unnamed(names[spare - 1] ?? '') ? '' : (names[spare - 1] ?? ''), why: 'spare', replaces }
+		return { column: spare, name: unnamed(names[spare - 1] ?? '') ? '' : (names[spare - 1] ?? ''), why: 'spare', replaces, because: because.get(i) ?? null }
 	}
 	// A code's worst mark over every clip carrying it: one of CB095's eighteen
 	// with an old file is enough to look at.
