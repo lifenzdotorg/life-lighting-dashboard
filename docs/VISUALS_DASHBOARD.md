@@ -1213,7 +1213,7 @@ now. **East, West, TGA and Tauranga** label Walk In, Walk Out and Holding as `WE
 that `mediaCodeOf` cannot read; they run holding in ProPresenter today, so read those codes before
 they get Arena, not now.
 
-**Built first (branch `holding-why`, the owner's "start there"): the "why here" line.** Every
+**Built first (on main since 2026-11-01, not in a build; the owner's "start there"): the "why here" line.** Every
 placed moment's card says why under where it lands ("Why: Labelled WTL", "Its title, "Doors
 Open", means PRE", "An announcement, so in line for PROMO: 2nd in line, in run-sheet order", "No
 column takes "EXP Mag", so it joins the announcements…", "Moved by hand for this service", "Kept

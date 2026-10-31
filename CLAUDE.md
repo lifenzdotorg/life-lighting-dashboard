@@ -324,8 +324,8 @@ run: one kiosk per computer, so the second only focuses the first.
 
 ## Next session starts here
 
-**2026-11-01: the Holding map researched, and "why here" built** (branch `holding-why`, not
-merged): the owner found the Holding map "not intuitive in the slightest"; research, a proposal and
+**2026-11-01: the Holding map researched, and "why here" built** (merged into main, not in a
+build): the owner found the Holding map "not intuitive in the slightest"; research, a proposal and
 their answers are in `docs/VISUALS_DASHBOARD.md` § The Holding map rethought (and the artifact it
 links). First piece: every Lookbook card and the Map's bar say why a moment lands where it does.
 401 tests and 291 Lua checks green; dev kiosk on the Mac against the stand-in only.
@@ -768,8 +768,8 @@ Later, not tonight:
 
 ### TODO, in order
 
-0. **The Holding map rethought** (researched 2026-11-01): "why here" on every card **built** on
-   branch `holding-why` (not merged); next, the column sheet on the Map, "every week?" after a
+0. **The Holding map rethought** (researched 2026-11-01): "why here" on every card **built**, on
+   main (not in a build); next, the column sheet on the Map, "every week?" after a
    Move, then Settings as sentences;
    `docs/VISUALS_DASHBOARD.md` § The Holding map rethought. Before East, West, TGA or Tauranga get
    Arena: read their `WETA043`-style codes.
