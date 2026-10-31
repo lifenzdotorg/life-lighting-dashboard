@@ -1193,6 +1193,38 @@ kiosk over CDP against `spikes/arena-stand-in.mjs` (the OH2026 composition with 
 HOLDING): edits, a fixed code typed in lower case, Save, Reset, Use. ⚠️ Not yet against a real
 composition, by finger, or with a fixed code fetched from a drive.
 
+### The Holding map rethought (research, 2026-11-01)
+
+The owner: the map is "not intuitive in the slightest". Research and a proposal, mocked on North AM
+1 Nov: https://claude.ai/artifact/2G7W5dCn74zJBEKtP7fHSj (sources there). In short: the map is
+rules about a grid shown without the grid, shows under half the rules (nine built-in behaviours
+are not on it), and speaks the code's words. Research (Expandable Grids, trigger-action studies,
+programming by example, the Whyline) and show tools (Ableton, Resolume, Millumin, ProPresenter)
+point one way. **Proposed, not built:**
+- the Map's column headings open that column's rule in sentences (what goes here, when a week has
+  none, never touch), with labels this campus has used and the last four Sundays;
+- a "why here" line on every card and cell, "why not" on what did not place;
+- "every week?" after a Move, stating the rule and its matches in past weeks;
+- Settings › Holding map as sentences, changed ones first; presets gone (the setup file carries it).
+
+The owner's answers: usually the owner sets the rules, with campus edge cases (so a booth's own
+changes stay marked); all four jobs (keep, send, never touch, understand why); per computer, as
+now. **East, West, TGA and Tauranga** label Walk In, Walk Out and Holding as `WETA043`-style codes
+that `mediaCodeOf` cannot read; they run holding in ProPresenter today, so read those codes before
+they get Arena, not now.
+
+**Built first (branch `holding-why`, the owner's "start there"): the "why here" line.** Every
+placed moment's card says why under where it lands ("Why: Labelled WTL", "Its title, "Doors
+Open", means PRE", "An announcement, so in line for PROMO: 2nd in line, in run-sheet order", "No
+column takes "EXP Mag", so it joins the announcements…", "Moved by hand for this service", "Kept
+in WTG, where NF098 already is", "This booth's Holding map sends it to WTG", a one-off's "…: the
+first spare column past the named ones"), and the Map's bar says the same for a tapped moment. A
+card with a note (a title clash, a kept column) shows the note instead, which already says why. A
+moment with no place says nothing here: its problem already says why not. The reasons are made
+where the rules decide (`planPlacements`' `because`, carried as `Landing.because`), so they cannot
+disagree with the placement. Dev kiosk on the Mac over CDP against the stand-in widened to 17
+columns and North AM 1 Nov's run sheet; ⚠️ not against Arena or by finger.
+
 ## Clear old FGs (owner's ask, 2026-10-05)
 
 "A clear old FGs button when updating all, and note when an old FG is in and ask if they

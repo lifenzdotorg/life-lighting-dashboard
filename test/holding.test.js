@@ -768,13 +768,20 @@ test('each look says where it lands: its column, why, and what it replaces', () 
 	const s = composition()
 	const looks = looksOf(ITEMS, s, new Set())
 	// Doors Open is in PRE already: nothing replaced.
-	assert.deepEqual(looks[0].lands, { column: 1, name: 'PRE', why: 'own', replaces: null })
+	assert.deepEqual(looks[0].lands, { column: 1, name: 'PRE', why: 'own', replaces: null, because: 'Its title, "Doors Open", means PRE' })
 	// NSL replaces the old upstairs foreground in its own column.
-	assert.deepEqual(looks[2].lands, { column: 6, name: 'NSL', why: 'own', replaces: 'CF446' })
+	assert.deepEqual(looks[2].lands, { column: 6, name: 'NSL', why: 'own', replaces: 'CF446', because: 'Labelled NSL' })
 	// Alpha takes the second PROMO, over last month's prayer foreground.
-	assert.deepEqual(looks[5].lands, { column: 10, name: 'PROMO', why: 'promo', replaces: 'CF593' })
-	// The preach background has no column of its own: none said.
+	assert.deepEqual(looks[5].lands, {
+		column: 10,
+		name: 'PROMO',
+		why: 'promo',
+		replaces: 'CF593',
+		because: 'An announcement, so in line for PROMO: 2nd in line, in run-sheet order',
+	})
+	// The preach background has no column of its own: none said, and it stays.
 	assert.equal(looks[7].lands?.why === 'own', false)
+	assert.equal(looks[7].lands?.because, 'No column named Preach BG: it stays where it already is')
 	// Moved: said so.
 	assert.equal(looksOf(ITEMS, s, new Set(), undefined, undefined, [{ item: 5, code: 'CF562', column: 11 }])[5].lands.why, 'moved')
 })
@@ -940,6 +947,38 @@ test('North, 1 Nov: WTG, left off the run sheet, keeps NF098 and is said; Clear 
 	// An empty one of the main four is said as empty.
 	s.layers[2].slots[7] = empty()
 	assert.deepEqual(keptColumns(NORTH, s), [{ column: 8, name: 'WTG', holds: null }])
+})
+
+test('every placed moment says why it lands there, in a card\'s words (the owner, 2026-11-01: the "why here" line)', () => {
+	const s = northArena()
+	const r = planPlacements(NORTH, s)
+	assert.deepEqual(NORTH.map((_, i) => r.because.get(i) ?? null), [
+		'Its title, "Doors Open", means PRE',
+		'Labelled WTL',
+		'Labelled NSL',
+		'No column takes "EXP Mag", so it joins the announcements in line for PROMO: 1st in line, in run-sheet order',
+		'Labelled Bibles',
+		'An announcement, so in line for PROMO: 2nd in line, in run-sheet order',
+		'Its title, "End", means POST',
+	])
+	// The card carries it with where it lands.
+	assert.equal(looksOf(NORTH, s, new Set())[1].lands.because, 'Labelled WTL')
+	// A label that means PRE says so; one that is the column's own name is short.
+	const label = [north('Arrival', 'Walk In', ['NB047'])]
+	assert.equal(planPlacements(label, s).because.get(0), 'Labelled "Walk In", which means PRE')
+	// Moved by hand says so, and wins over the rule.
+	assert.equal(planPlacements(NORTH, s, undefined, [{ item: 1, code: 'NF097', column: 11 }]).because.get(1), 'Moved by hand for this service')
+	// Kept where its foreground already is.
+	const giving = [...NORTH, item('Giving VID (1:54)', 'Giving', ['NB044', 'NF098'], { NB044: NORTH_FILES.NB044, NF098: N('NF098-Sunday-WaysToGive') })]
+	assert.equal(planPlacements(giving, s).because.get(giving.length - 1), 'Kept in WTG, where NF098 already is')
+	// Nothing to say about a moment with no place: its problem says why not.
+	const crowd = [north('Offering', 'WTL', ['NB044', 'NF221']), north('Welcome', 'WTL', ['NB044', 'NF097'])]
+	const c = planPlacements(crowd, s)
+	assert.equal(c.columns.has(1), false)
+	assert.equal(c.because.has(1), false)
+	// The Holding map's own column says so.
+	const mapped = planPlacements(giving, s, { families: {}, columns: { WTG: { takes: ['Giving'] } } })
+	assert.equal(mapped.because.get(giving.length - 1), "This booth's Holding map sends it to WTG")
 })
 
 test("a moment whose label finds no column goes where its foreground already is, after every name (the owner, 2026-11-01)", () => {
