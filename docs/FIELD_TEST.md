@@ -93,6 +93,10 @@ more than a description of it.
 
 Tick what you saw; anything odd is worth a line.
 
+**1.9.0** (2026-11-01): Holding after North's morning: the title decides PRE and POST, the main
+four kept and never cleared, service photos cleared, a moment following its old column, Move into
+any column (§ North's morning, below). Published here only.
+
 **1.8.2** (2026-10-22): Put back on the Map (tap a moved moment, or the list under the grid).
 Nothing else new since 1.8.1. Published here only.
 
@@ -204,7 +208,7 @@ sections below.
 **Where it lands** (1.8.0; the owner's picks, 2026-10-22)
 - [ ] A card with a problem names it on its badge: Wrong file?, File missing, No spot, Didn't load; two or more say "2 problems"
 - [ ] Every card: "Lands in PROMO 2 · column 12 · replaces …" over a strip with its column lit; matches where Arena puts it after Load
-- [ ] **Move** on a promo: PROMO columns and the spare ones past them lit, never WTL, PRE and the like; another promo's says "Swap with …"
+- [ ] **Move** on a promo: PROMO columns and the spare ones past them lit (since 1.9.0, every column but COUNTDOWN, VIDEO and BROADCAST); another moment's says "Swap with …"
 - [ ] A swap: the confirmation says "Swap A and B"; **Cancel** keeps them swapped and To load; Load puts each in its new column, nothing else moves
 - [ ] **Put back** on a moved card; a swap's other card stays where it went
 - [ ] **Map** (the fourth size button): Central's columns in Arena's order, each moment's name over its clips; tap a promo, then a lit column: the same swap
@@ -214,6 +218,13 @@ sections below.
 - [ ] **Tick** two moments, tap a column: the headings show where each lands; **Place 2**; a column on screen is skipped
 - [ ] **Undo** after a move (one tap) and after a Load (two taps): each clip's old file back, an empty one left and said
 - [ ] **Put back** on the Map: tap a moved moment, Put back on the bar; or the list under the grid (1.8.2)
+
+**North's morning** (1.9.0; the owner's answers, 2026-11-01; `docs/VISUALS_DASHBOARD.md` § North's morning)
+- [ ] An End labelled "Walk In" (or a Doors Open labelled "Walk Out") lands by its title, in POST (PRE), and its card says so in orange
+- [ ] A week with no Giving item: the top says **WTG keeps …** (or is empty); WTG's FG is left as it is
+- [ ] **Clear old FGs** offers nothing in WTL, NSL, BIBLES or WTG; offers last week's service photo by name in a PROMO; clears it, and the clip is empty after
+- [ ] A moment whose label finds no column lands where its FG already is, and its card says why
+- [ ] **Move** on End or any moment: every column lit but COUNTDOWN, VIDEO and BROADCAST
 
 **Announcements Load** (1.3.0; Admin; Settings › ProPresenter › Announcements: the folder as this
 computer reaches it, Arena's graphics folder set; first run at Central 2026-10-14 into PAUA TEST AM)
