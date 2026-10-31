@@ -517,7 +517,8 @@ app.whenReady().then(() => {
 	ipcMain.handle('media:empty', async (e, clipId: unknown, code: unknown): Promise<ArenaCommandResult> => {
 		if (!fromOurs(e)) return { ok: false, detail: 'not from this app' }
 		if (mode !== 'operator') return { ok: false, detail: 'Admin only.' }
-		if (typeof clipId !== 'number' || typeof code !== 'string' || !/^[A-Z]{2}\d{3}$/.test(code)) return { ok: false, detail: 'not a clip to clear' }
+		// A code, or a clip's name when it has none (`emptyWire` checks which).
+		if (typeof clipId !== 'number' || typeof code !== 'string' || code.trim() === '' || code.length > 300) return { ok: false, detail: 'not a clip to clear' }
 		return arena?.empty(clipId, code) ?? { ok: false, detail: 'no Arena is set up' }
 	})
 	ipcMain.handle('media:fetch-state', (e): FetchStates => (fromOurs(e) ? mediaFetch.states() : {}))

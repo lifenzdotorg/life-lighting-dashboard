@@ -43,7 +43,7 @@ import { Check, FileX, Grid3x3, LayoutGrid, Minus, Rows3, Square, RefreshCw, Und
 
 import { thumbnailUrl, type ArenaLayer, type ArenaStatus } from '../../shared/arena.js'
 import { checkAnnouncements, sessionOf, wantedAnnouncements } from '../../shared/announcements.js'
-import { COLUMN_NAMES, codesOn, columnNamesOf, holdingLayers, layerKeyOf, lookSteps, looksOf, mergeSteps, slotCode, slotMark, type CodeState, type Landing, type Look, type Placement } from '../../shared/holding.js'
+import { COLUMN_NAMES, codesOn, columnNamesOf, holdingLayers, keptColumns, layerKeyOf, lookSteps, looksOf, mergeSteps, slotCode, slotMark, type CodeState, type Landing, type Look, type Placement } from '../../shared/holding.js'
 import { lookbookThumbUrl, mediaCodeOf, type LookbookItem } from '../../shared/media-check.js'
 import type { Channel } from '../../shared/reading.js'
 import { useMediaCheck, type MediaCheckState } from '../useMediaCheck.js'
@@ -155,6 +155,8 @@ export function Lookbook({ status, ageMs, now, onBack }: { status: ArenaStatus; 
 	const headerNames = holding === undefined ? status.columns.map((c) => c.name) : columnNamesOf(holding, status)
 	const named = headerNames.some((n) => !unnamedColumn(n))
 	const landedColumns = new Set(looks.flatMap((l) => (l.lands === null ? [] : [l.lands.column])))
+	// The main four a week leaves out: kept as they are, and said (the owner, 2026-11-01).
+	const kept = keptColumns(items, status, m.map, m.pins)
 	const shown = onlyNeeds ? looks.filter((l) => states.get(l.item) === 'needs') : looks
 
 	return (
@@ -219,6 +221,18 @@ export function Lookbook({ status, ageMs, now, onBack }: { status: ArenaStatus; 
 				{!named && m.runSheet !== null && (
 					<p className="mb-2 rounded-ctl bg-booth-raise p-3 text-sm">
 						Name Arena&rsquo;s columns <b>{COLUMN_NAMES}</b> to place by column. Until then nothing is placed.
+					</p>
+				)}
+				{kept.length > 0 && (
+					<p className="mb-2 rounded-ctl bg-booth-raise p-3 text-sm">
+						Not on this week&rsquo;s run sheet:{' '}
+						{kept.map((k, i) => (
+							<span key={k.column}>
+								{i > 0 && ' · '}
+								<b>{k.name}</b>{' '}
+								{k.holds === null ? <span className="text-warn">is empty</span> : <>keeps {k.holds}</>}
+							</span>
+						))}
 					</p>
 				)}
 				<Confirm key={m.asking?.id} m={m} />
@@ -484,6 +498,7 @@ function Card({
 				</div>
 			)}
 			{look.lands !== null && <Lands lands={look.lands} names={columnNames} big={big} />}
+			{look.note !== null && <p className="rounded-ctl bg-warn/10 px-2.5 py-1.5 text-sm text-warn">{look.note}</p>}
 			{look.lands !== null && strays.length > 0 && (
 				<p className="rounded-ctl bg-warn/10 px-2.5 py-1.5 text-sm text-warn">
 					A copy is also in {strays.map((c) => columnName(columnNames, c)).join(', ')} from before: fire {columnName(columnNames, look.lands.column)}, not that.

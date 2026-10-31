@@ -126,6 +126,25 @@ test('no command can reach the endpoints that empty a slot or a layer', () => {
 	}
 })
 
+test('Clear old FGs empties a clip with no code by its name, only in a PROMO or spare column (the owner, 2026-11-01)', () => {
+	const photo = { name: 'Service Photo', state: 'loaded', file: 'C:\\Media\\Service Photo.jpg', missingFile: null }
+	// Columns not named: nothing is a PROMO or spare, so nothing without a code is cleared.
+	const plain = tree()
+	const plainFg = plain.layers.find((l) => l.name === 'HOLD FG')
+	plainFg.slots[2] = { ...plainFg.slots[2], ...photo }
+	assert.match(emptyWire(plain, plainFg.slots[2].id, 'Service Photo').detail, /only from a PROMO or spare/)
+	// Named: PRE, then PROMO in column 3.
+	const t = tree()
+	t.columns = t.columns.map((c, i) => ({ ...c, name: ['PRE', 'WTG', 'PROMO'][i] ?? c.name }))
+	const fg = t.layers.find((l) => l.name === 'HOLD FG')
+	fg.slots[1] = { ...fg.slots[1], ...photo }
+	fg.slots[2] = { ...fg.slots[2], ...photo }
+	const id = fg.slots[2].id
+	assert.deepEqual(emptyWire(t, id, 'Service Photo').value, { kind: 'rest', calls: [{ path: `/composition/clips/by-id/${id}/clear`, body: null }] })
+	assert.match(emptyWire(t, id, 'Another Photo').detail, /no longer holds Another Photo/)
+	assert.match(emptyWire(t, fg.slots[1].id, 'Service Photo').detail, /only from a PROMO or spare/)
+})
+
 test('Clear old FGs empties only a HOLD FG clip still holding the code shown, never one on screen', () => {
 	const t = tree()
 	const fg = t.layers.find((l) => l.name === 'HOLD FG')

@@ -33,8 +33,8 @@
 //   back to the subscriber, so the read-back comes free.
 
 import type { ArenaCommand } from '../shared/arena.js'
-import { slotCode, TYPE_LAYER } from '../shared/holding.js'
-import type { ArenaTree } from './arena-live.js'
+import { noCodeClearable, slotCode, TYPE_LAYER } from '../shared/holding.js'
+import { statusOf, type ArenaTree } from './arena-live.js'
 import type { Decoded } from './ontime.js'
 
 /** What to do on the wire for one command. */
@@ -112,10 +112,12 @@ export function openWire(tree: ArenaTree, clipId: number, fileUrl: string, live 
  *  view's. This is the `/clips/by-id/<id>/clear` the header warns of, so it is
  *  allowed only where the confirmation said: a clip on the foreground layer
  *  (HOLD FG), still holding the code the operator was shown, and not on
- *  screen. A slot that changed since is left alone. ⚠️ What Arena 7.28 does
+ *  screen. A slot that changed since is left alone. A clip with no code (a
+ *  service photo, the owner, 2026-11-01) is named by its clip name instead,
+ *  and only in a PROMO or a spare column. ⚠️ What Arena 7.28 does
  *  with it is its API's word ("removing all tracks and settings"), not yet
  *  watched here. */
-export function emptyWire(tree: ArenaTree, clipId: number, code: string): Decoded<ArenaWire> {
+export function emptyWire(tree: ArenaTree, clipId: number, what: string): Decoded<ArenaWire> {
 	if (!isId(clipId)) return { ok: false, detail: 'not a clip' }
 	const layer = tree.layers.find((l) => l.slots.some((s) => s.id === clipId))
 	const slot = layer?.slots.find((s) => s.id === clipId)
@@ -123,7 +125,12 @@ export function emptyWire(tree: ArenaTree, clipId: number, code: string): Decode
 	if (TYPE_LAYER['F']?.test(layer.name.trim()) !== true) return { ok: false, detail: `only old foregrounds are cleared, and this clip is on ${layer.name}` }
 	if (slot.state === 'empty') return { ok: false, detail: 'that slot is already empty' }
 	if (slot.state === 'playing') return { ok: false, detail: 'that clip is on screen; nothing on screen is cleared' }
-	if (slotCode(slot) !== code) return { ok: false, detail: `that slot no longer holds ${code}` }
+	if (/^[A-Z]{2}\d{3}$/.test(what)) {
+		if (slotCode(slot) !== what) return { ok: false, detail: `that slot no longer holds ${what}` }
+	} else {
+		if (slotCode(slot) !== null || slot.name !== what) return { ok: false, detail: `that slot no longer holds ${what}` }
+		if (!noCodeClearable(statusOf(tree), clipId)) return { ok: false, detail: 'a clip with no code is cleared only from a PROMO or spare column' }
+	}
 	return { ok: true, value: { kind: 'rest', calls: [{ path: `/composition/clips/by-id/${clipId}/clear`, body: null }] } }
 }
 

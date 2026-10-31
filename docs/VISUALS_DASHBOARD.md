@@ -1095,6 +1095,52 @@ the result line and Files to check (a card that needs a look says so; the filter
 Update all, Clear old FGs (in its confirmation, or alone when nothing else is to load), pins
 and the Holding map are unchanged, and every rule is still `src/shared/holding.ts`.
 
+### North's morning, 2026-11-01 (branch `holding-north`)
+
+The owner's three problems at North AM that morning, traced against the lookbook's own run sheet
+(`/api/services/<id>/items`):
+- **End wanted a PROMO**: End came labelled **"Walk In"** in Planning Center (the week before,
+  Walk Out). The label went first, so End found PRE, which Doors Open had, and was left to place
+  by hand; Move offered only PROMO and spare columns.
+- **WTG missing**: the run sheet had no Giving item (since 18 Oct, nearly every campus's has
+  none).
+- **Clear old FGs emptied WTG, not PROMO 3**: NF098 was not on the sheet, so WTG was "old"; PROMO
+  3 held a **service photo**, whose name carries no code, so it was left as not the lookbook's.
+
+The owner's answers, in two short rounds, and what each is:
+- **The title decides PRE and POST** (`titlePre`, `titlePost`): a title of Doors Open or Walk In
+  is PRE, End or Walk Out is POST, whatever the label; the label only when the title says
+  neither. "This is likely to happen, I need to be resilient to these failures."
+- **The clash is said on the card** (`titleClash`, `Look.note`): "End is labelled "Walk In" in
+  Planning Center; put in POST by its title", so it is fixed upstream.
+- **Follow the code's old column**: a moment whose label finds no column, or one another has,
+  goes where Arena already holds its **foreground**, when that is a named column that is not a
+  PROMO and no other moment has; after every name, so a name always wins. Foregrounds only: a
+  background sits in half the columns. Said on the card ("kept in WTG, where NF098 already is").
+- **The main four** (WTL, NSL, BIBLES, WTG; `MAIN_FOUR`) are standing pieces: a week that leaves
+  one out keeps what is there, and the Lookbook says so on its top panel ("Not on this week's run
+  sheet: WTG keeps NF098", or "is empty" in amber; `keptColumns`). Its HOLD BG clip still takes
+  the normal background like any gap (the plainest reading; ask if not wanted).
+- **Clear old FGs never empties the main four**; PRE and POST still may (the owner: "anything but
+  the main four").
+- **A clip with no code is cleared from a PROMO or spare column** (a service photo), named by its
+  clip name in the confirmation; in a named column it is still left alone. Main checks the name
+  and the column again before it builds the path (`emptyWire`, `noCodeClearable`). Spare needs a
+  named column before it: an unnamed composition clears nothing without a code.
+- **Move into any column**, named ones too, a held one as a swap; never a reserved one. Place n
+  keeps to PROMO and spare.
+
+**Every campus's run sheets from 11 Oct to 1 Nov** (36) were run through the new rules with
+Central's column pattern. Besides North's End: **South AM 1 Nov has Doors Open labelled "Walk
+Out"** (now PRE by its title, said). Not fixed, for the owner: **East AM 25 Oct** has its Giving
+video labelled **WTL** (with WTL taken, it goes to WTG only if Arena already holds its FG there);
+**Central PM 25 Oct** labels NSL "NSL *Upstairs" (no column, so a PROMO); **Central AM and PM 1
+Nov** have six "Message // LINK" foregrounds that take every PROMO, so Psalms Series did not fit.
+
+Tests from North's real run sheet (`test/holding.test.js`, "North, 1 Nov"). In the dev kiosk on
+the Mac over CDP against the stand-in, North AM 1 Nov picked: End lands in POST with its note, and
+"WTG is empty" on the top panel. ⚠️ Not against Arena or by finger.
+
 ## The Lookbook view (owner's ask, 2026-10-05; built the same day)
 
 The owner: another holding view that "mimics the lookbook idea, have the images BIG and

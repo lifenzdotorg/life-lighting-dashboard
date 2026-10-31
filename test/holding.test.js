@@ -8,6 +8,7 @@ import {
 	codesOn,
 	explainPlan,
 	holdingLayers,
+	keptColumns,
 	likeness,
 	lookSteps,
 	looksOf,
@@ -339,18 +340,34 @@ test("loading one look: its codes into its column, a shared code's old files eve
 	assert.deepEqual(lookSteps(99, ITEMS, s, marks), [])
 })
 
-test('old foregrounds: HOLD FG clips this run sheet does not use, never on screen, reserved or about to be loaded', () => {
+test('old foregrounds: HOLD FG clips this run sheet does not use, never on screen, reserved, about to be loaded or one of the main four', () => {
 	const s = composition()
 	const fg = s.layers[3]
-	// CF446 (NSL), CF561 and CF593 (PROMO) are last week's; CF588 and CF445 are today's.
+	// CF561 and CF593 (PROMO) are last week's; CF588 and CF445 are today's;
+	// CF446 is last week's too, but in NSL, one of the main four (the owner, 2026-11-01).
 	assert.deepEqual(
 		oldForegrounds(ITEMS, s).map((c) => [c.code, c.columnName]),
-		[['CF446', 'NSL'], ['CF561', 'PROMO'], ['CF593', 'PROMO']],
+		[['CF561', 'PROMO'], ['CF593', 'PROMO']],
 	)
 	fg.slots[8] = { ...fg.slots[8], state: 'playing' }
 	fg.slots[2] = clip('CF100-Old-Countdown.png') // COUNTDOWN: reserved
 	assert.deepEqual(oldForegrounds(ITEMS, s, new Set([fg.slots[5].id])).map((c) => c.code), ['CF593'])
 	assert.deepEqual(oldForegrounds([], s), [])
+})
+
+test('old foregrounds: a clip with no code goes from a PROMO or spare column, by its name; never from a named one (the owner, 2026-11-01)', () => {
+	const s = wide(2)
+	const fg = s.layers[3]
+	fg.slots[10] = clip('Service Photo 25 Oct.jpg') // PROMO 3: North's service photo
+	fg.slots[12] = clip('Baptism photo.png') // spare, past the named columns
+	fg.slots[0] = clip('Walk In photo.png') // PRE: named, left
+	fg.slots[7] = clip('Giving photo.png') // WTG: one of the main four, left
+	const old = oldForegrounds(ITEMS, s)
+	assert.deepEqual(
+		old.filter((c) => !c.coded).map((c) => [c.code, c.columnName]),
+		[['Service Photo 25 Oct', 'PROMO'], ['Baptism photo', 'column 13']],
+	)
+	assert.ok(old.filter((c) => c.coded).every((c) => /^[A-Z]{2}\d{3}$/.test(c.code)))
 })
 
 test('the normal background: what the rest of the service uses, not Doors Open, Pre & Post, Preach or announcements', () => {
@@ -688,16 +705,17 @@ test('a pin moves a moment with a column of its own, and no PROMO takes its colu
 	assert.ok(r.placements.filter((p) => p.item !== 2 && p.layer === 'HOLD FG').every((p) => p.column !== 11))
 })
 
-test('where a moment may be moved: a PROMO or spare column on its layer, never a named one (the owner, 2026-10-22)', () => {
+test('where a moment may be moved: any column on its layer, a held one as a swap; never a reserved one (the owner, 2026-11-01)', () => {
 	const s = wide(3)
 	const fg = s.layers[3]
 	const cols = (targets) => fg.slots.flatMap((slot, i) => (targets.has(slot.id) ? [[i + 1, targets.get(slot.id).swap]] : []))
-	// End sits in POST, a named column: the free PROMOs (11, 12) and the spare
-	// columns past them; never COUNTDOWN, VIDEO BG, PRE, WTL, …; the PROMOs the
-	// announcements have are not offered, since End would put one in POST.
-	assert.deepEqual(cols(moveTargets(ITEMS, s, { item: ITEMS.length - 1, code: 'CF588' })), [[11, null], [12, null], [13, null], [14, null], [15, null]])
-	// Alpha sits in PROMO 2 (column 10): Prayer & Fasting's PROMO 1 is a swap.
-	assert.deepEqual(cols(moveTargets(ITEMS, s, { item: 5, code: 'CF562' })), [[9, 4], [11, null], [12, null], [13, null], [14, null], [15, null]])
+	// End sits in POST: every other column but COUNTDOWN and VIDEO BG, the
+	// named ones and the held PROMOs as swaps with their moments.
+	const swaps = [[1, 0], [5, 1], [6, 2], [7, 6], [8, 3], [9, 4], [10, 5]]
+	const free = [[11, null], [12, null], [13, null], [14, null], [15, null]]
+	assert.deepEqual(cols(moveTargets(ITEMS, s, { item: ITEMS.length - 1, code: 'CF588' })), [...swaps, ...free])
+	// Alpha sits in PROMO 2 (column 10): POST is End's, so a swap too.
+	assert.deepEqual(cols(moveTargets(ITEMS, s, { item: 5, code: 'CF562' })), [[1, 0], [2, 8], ...swaps.slice(1, 6), ...free])
 	// Only its own layer.
 	assert.ok(!s.layers[1].slots.some((slot) => moveTargets(ITEMS, s, { item: 5, code: 'CF562' }).has(slot.id)))
 	// Storage: anything not a pin is dropped.
@@ -767,10 +785,13 @@ test('a one-off put by hand inside the named columns: its background follows, sa
 	const s = composition()
 	s.layers[3].slots[5] = clip('CF702-Conf-WorshipNight.png') // NSL, by hand
 	const items = [...FULL.filter((x) => x.label !== 'NSL'), oneOff('Worship Night', 'CF702', 'CB702')]
-	const p = planPlacements(items, s).placements.find((x) => x.code === 'CB702')
+	// Since 2026-11-01 the column is its own, by where its foreground already
+	// is (`rest` in planPlacements), so its background goes there as its own.
+	const r = planPlacements(items, s)
+	const p = r.placements.find((x) => x.code === 'CB702')
 	assert.equal(p.column, 6)
-	assert.equal(p.why, 'follows')
-	assert.match(placementWords(p), /^HOLD BG · NSL \(column 6\), beside its foreground, replacing CB095$/)
+	assert.equal(p.why, 'named')
+	assert.match(r.notes.get(items.length - 1), /kept in NSL, where CF702 already is$/)
 })
 
 test('one moment a column: two items finding the same column by name do not share its clip', () => {
@@ -845,4 +866,95 @@ test("a one-off's code in a clip this plan replaces is not already on its layer"
 	tight.layers[3].slots[11] = clip('CF702-Conf-WorshipNight.png')
 	const t = planPlacements([...FULL, oneOff('Worship Night', 'CF702', 'CB702')], tight)
 	assert.equal(t.unplaced.find((u) => u.code === 'CF702').didntFit, true)
+})
+
+// North AM, 1 November 2026, as the lookbook gave it (the owner's three
+// problems that morning): End labelled "Walk In", no Giving item, and last
+// week's WTG and a service photo in HOLD FG.
+const N = (name) => `/storage/library/N/${name}_1793000000000.png`
+const NORTH_FILES = {
+	NB044: N('NB044-Sunday-Psalms'), NB047: N('NB047-Sunday-WalkIn'), NF097: N('NF097-Sunday-WelcometoLIFE'),
+	NF037: N('NF037-Sunday-NextSteps'), NF174: N('NF174-Sunday-EXPMag'), NF107: N('NF107-Sunday-Bibles'),
+	NF221: N('NF221-Sunday-PsalmsSeries'), NF161: N('NF161-Sunday-WalkOut'),
+}
+const north = (title, label, codes) => item(title, label, codes, Object.fromEntries(codes.map((c) => [c, NORTH_FILES[c]])))
+const NORTH = [
+	north('Doors Open', 'Walk In', ['NB047']),
+	north('Welcome // Meet & Greet', 'WTL', ['NB044', 'NF097']),
+	north('Welcome // Meet & Greet', 'NSL', ['NB044', 'NF037']),
+	north('Message (incl Altar Call) // LOCAL', 'EXP Mag', ['NB044', 'NF174']),
+	north('EOS Announcements', 'Bibles', ['NB044', 'NF107']),
+	north('EOS Announcements', 'Psalms Series', ['NB044', 'NF221']),
+	north('End', 'Walk In', ['NB044', 'NF161']),
+]
+// Arena as 25 October left it.
+const northArena = () => {
+	const cells = (c) => NAMES.map((_, i) => (c[i] === undefined ? empty() : clip(c[i])))
+	return {
+		master: 1,
+		deck: 'AM',
+		groups: [],
+		columns: NAMES.map((name, i) => ({ id: 900 + i, name, state: 'loaded' })),
+		layers: [
+			layer(1, 'A SCREEN BG', 'A SCREENS', cells({})),
+			layer(2, 'HOLD BG', 'HOLDING', cells({ 0: 'NB030-Sunday-Old.png', 1: 'NB030-Sunday-Old.png', 4: 'NB030-Sunday-Old.png', 7: 'NB030-Sunday-Old.png' })),
+			layer(4, 'HOLD FG', 'HOLDING', cells({
+				0: 'NF119-Sunday-WalkIn.png',
+				1: 'NF105-Sunday-WalkOut.png',
+				4: 'NF097-Sunday-WelcometoLIFE.png',
+				5: 'NF037-Sunday-NextSteps.png',
+				6: 'NF107-Sunday-Bibles.png',
+				7: 'NF098-Sunday-WaysToGive.png',
+				8: 'NF220-Sunday-LIFEBusiness.png',
+				10: 'Service Photo 25 Oct.jpg',
+			})),
+		],
+	}
+}
+
+test('North, 1 Nov: End labelled "Walk In" goes in POST by its title, and its card says why (the owner, 2026-11-01)', () => {
+	const s = northArena()
+	const r = planPlacements(NORTH, s)
+	assert.equal(r.columns.get(6), 1) // POST
+	assert.equal(r.columns.get(0), 0) // Doors Open keeps PRE
+	assert.equal(r.unplaced.some((u) => u.item === 6), false)
+	assert.equal(r.notes.get(6), 'End is labelled "Walk In" in Planning Center; put in POST by its title')
+	assert.equal(looksOf(NORTH, s, new Set())[6].note, r.notes.get(6))
+	// A label that agrees, or a title that says neither, says nothing.
+	assert.equal(r.notes.has(0), false)
+	assert.equal(r.notes.has(1), false)
+	// The rest as before: the message and Psalms take PROMO 1 and 2 in order.
+	assert.equal(r.columns.get(3), 8)
+	assert.equal(r.columns.get(5), 9)
+})
+
+test('North, 1 Nov: WTG, left off the run sheet, keeps NF098 and is said; Clear old FGs leaves it (the owner, 2026-11-01)', () => {
+	const s = northArena()
+	assert.deepEqual(keptColumns(NORTH, s), [{ column: 8, name: 'WTG', holds: 'NF098' }])
+	assert.equal(planPlacements(NORTH, s).placements.some((p) => p.layer === 'HOLD FG' && p.column === 8), false)
+	const old = oldForegrounds(NORTH, s)
+	assert.equal(old.some((c) => c.code === 'NF098'), false)
+	// Last week's LIFE Business and the service photo go; so do last week's
+	// Walk In and Walk Out (PRE and POST are not the main four).
+	assert.deepEqual(old.map((c) => c.code), ['NF119', 'NF105', 'NF220', 'Service Photo 25 Oct'])
+	// An empty one of the main four is said as empty.
+	s.layers[2].slots[7] = empty()
+	assert.deepEqual(keptColumns(NORTH, s), [{ column: 8, name: 'WTG', holds: null }])
+})
+
+test("a moment whose label finds no column goes where its foreground already is, after every name (the owner, 2026-11-01)", () => {
+	const s = northArena()
+	const giving = [...NORTH, item('Giving VID (1:54)', 'Giving', ['NB044', 'NF098'], { NB044: NORTH_FILES.NB044, NF098: N('NF098-Sunday-WaysToGive') })]
+	const r = planPlacements(giving, s)
+	assert.equal(r.columns.get(giving.length - 1), 7) // WTG, where NF098 is
+	assert.equal(r.notes.get(giving.length - 1), 'Giving VID (1:54) is labelled "Giving"; kept in WTG, where NF098 already is')
+	assert.deepEqual(keptColumns(giving, s), [])
+	// A name always wins: a moment labelled WTG takes it, and the other queues.
+	const both = [...giving, north('Offering', 'WTG', ['NB044', 'NF221'])]
+	const b = planPlacements(both, s)
+	assert.equal(b.columns.get(both.length - 1), 7)
+	assert.notEqual(b.columns.get(giving.length - 1), 7)
+	// A background alone never finds a column this way: NB044 is everywhere.
+	const bgOnly = [...NORTH, item('Prayer', 'Prayer', ['NB030'], { NB030: N('NB030-Sunday-Old') })]
+	assert.equal(planPlacements(bgOnly, s).notes.has(bgOnly.length - 1), false)
 })

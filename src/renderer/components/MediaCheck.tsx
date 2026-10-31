@@ -186,7 +186,8 @@ export function Confirm({ m }: { m: MediaCheckState }) {
 		setClear(false)
 		setEach(false)
 	}
-	const oldWords = clears.map((c) => c.code).join(', ')
+	// A clip with no code (a service photo) by its name and where it is.
+	const oldWords = clears.map((c) => (c.coded ? c.code : `"${c.code}" in ${c.columnName}`)).join(', ')
 	// What has no place, said in the count; each one under Show each.
 	const leftOut = unplaced.filter((u) => u.kind !== 'unnamed' && u.kind !== 'no-file')
 	const files = (n: number) => `${n} ${n === 1 ? 'file' : 'files'}`

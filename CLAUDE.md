@@ -324,6 +324,15 @@ run: one kiosk per computer, so the second only focuses the first.
 
 ## Next session starts here
 
+**2026-11-01: branch `holding-north`, not merged:** North AM's three Holding problems that
+morning, fixed from the owner's answers: the title decides PRE and POST (End came labelled "Walk
+In") and the clash is said on the card; a moment with no column follows its foreground's old named
+column; the main four (WTL, NSL, BIBLES, WTG) kept when a week leaves one out, said, and never
+cleared; a clip with no code (a service photo) cleared from PROMO and spare; Move into any column.
+Tests from North's real run sheet; the new rules run over every campus's sheets since 11 Oct
+(other mislabels for the owner: `docs/VISUALS_DASHBOARD.md` § North's morning). Dev kiosk on the
+Mac against the stand-in only.
+
 **2026-10-22: v1.8.2 tagged** at the owner's ask, with `map-put-back` merged: Put back on the Map,
 nothing else since 1.8.1. Checked on the Mac against the stand-in only.
 
