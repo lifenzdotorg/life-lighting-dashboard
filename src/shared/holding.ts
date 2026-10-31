@@ -385,10 +385,19 @@ export function overflowSlots(
 const OVERFLOWS = new Set(['F', 'B'])
 
 const isPromo = (item: LookbookItem) => /announce|promo/i.test(`${item.title} ${item.label ?? ''}`)
-const isPre = (item: LookbookItem) => /walk\s*in|doors?\s*open|^pre$/i.test(item.label ?? '') || /doors?\s*open/i.test(item.title)
+// THE TITLE DECIDES PRE AND POST (the owner, 2026-11-01, after North's End
+// came labelled "Walk In": "this is likely to happen, I need to be resilient
+// to these failures"). A title of Doors Open or Walk In is PRE, and End or Walk
+// Out is POST, whatever the label says; the label decides only when the title
+// says neither. A clash is said on the card (`titleClash`).
+const titlePre = (item: LookbookItem) => /doors?\s*open|walk\s*in/i.test(item.title) && !isPromo(item)
 /** A title beginning End is the end of the service, unless it is an
  *  announcement (`End of Service Announcements` is PROMO's). */
-const isPost = (item: LookbookItem) => /walk\s*out|^post$/i.test(item.label ?? '') || (/^\s*end\b/i.test(item.title) && !isPromo(item))
+const titlePost = (item: LookbookItem) => (/^\s*end\b/i.test(item.title) || /walk\s*out/i.test(item.title)) && !isPromo(item)
+const labelPre = (item: LookbookItem) => /walk\s*in|doors?\s*open|^pre$/i.test(item.label ?? '')
+const labelPost = (item: LookbookItem) => /walk\s*out|^post$/i.test(item.label ?? '')
+const isPre = (item: LookbookItem) => titlePre(item) || (!titlePost(item) && labelPre(item))
+const isPost = (item: LookbookItem) => titlePost(item) || (!titlePre(item) && labelPost(item))
 const isPrePost = (item: LookbookItem) => /pre\s*(?:&|and)\s*post/i.test(`${item.title} ${item.label ?? ''}`)
 /** The message: `Message (Incl. Altar Call)`, labelled `Preach BG`. */
 const isPreach = (item: LookbookItem) => /preach|sermon/i.test(`${item.title} ${item.label ?? ''}`) || /^\s*message\b/i.test(item.title)
@@ -408,6 +417,43 @@ function namedColumn(item: LookbookItem, names: string[]): number | null {
 	}
 	if (item.label !== null && norm(item.label) !== '') return find(norm(item.label))
 	return null
+}
+
+/** The column the label alone would give, for saying a clash: PRE or POST by
+ *  its words, else the column named the same. */
+function labelColumn(item: LookbookItem, names: string[]): number | null {
+	const find = (want: string) => {
+		const i = names.findIndex((n) => norm(n) === want && !reservedName(n))
+		return i < 0 ? null : i
+	}
+	if (labelPre(item)) return find('PRE')
+	if (labelPost(item)) return find('POST')
+	return item.label !== null && norm(item.label) !== '' ? find(norm(item.label)) : null
+}
+
+/** When the title put a moment in PRE or POST and its label says another
+ *  column, the words for its card; else null. */
+function titleClash(item: LookbookItem, names: string[], column: number): string | null {
+	if (!titlePre(item) && !titlePost(item)) return null
+	const byLabel = labelColumn(item, names)
+	if (byLabel === null || byLabel === column) return null
+	return `${item.title.trim()} is labelled "${item.label?.trim() ?? ''}" in Planning Center; put in ${names[column]?.trim() ?? 'its column'} by its title`
+}
+
+// THE MAIN FOUR (the owner, 2026-11-01: "there should always be the main 4"):
+// WTL, NSL, BIBLES and WTG are standing pieces, in Arena every week whether or
+// not the run sheet names them. A week that does not keeps what is there (and
+// the Lookbook says so, `keptColumns`), and Clear old FGs never empties them.
+const MAIN_FOUR = new Set(['WTL', 'NSL', 'BIBLES', 'WTG'])
+const isMainFour = (name: string) => MAIN_FOUR.has(norm(name))
+
+/** A clip past the named columns, or in a PROMO: where last week's promos and
+ *  one-offs sit, so where a clip with no code (a service photo) may be cleared
+ *  (the owner, 2026-11-01). Counted from 0. */
+function promoOrSpare(layer: ArenaLayer, column: number, status: ArenaStatus): boolean {
+	const name = columnNamesOf(layer, status)[column] ?? ''
+	const last = lastNamed(layer, status)
+	return isPromoName(name) || (unnamed(name) && last >= 0 && column > last)
 }
 
 /** The Arena codes an item calls for, each with the layer it goes to (its
@@ -476,6 +522,8 @@ export function planPlacements(
 	names: string[]
 	/** What needs nothing, and why. */
 	settled: Settled[]
+	/** What a moment's card says beside where it lands, by item. */
+	notes: Map<number, string>
 } {
 	const today = codesOn(items)
 	const layerOf = (type: string) => layerFor(status, type)
@@ -528,6 +576,11 @@ export function planPlacements(
 		if (arenaCodes(items[i] as LookbookItem, map).length > 0) claim(i, column, 'chosen')
 	}
 	const poolOf = new Map<number, { columns: number[]; promo: boolean; oneOff?: true }>()
+	/** What a card says beside where its moment lands (a label that clashes
+	 *  with its title; a column found by where its code already is). */
+	const notes = new Map<number, string>()
+	// Items with no column by name, to try where their code already is.
+	const rest: number[] = []
 	for (const [i, item] of items.entries()) {
 		if (arenaCodes(item, map).length === 0 || pinned.has(i)) continue
 		if (!anyNamed) {
@@ -538,8 +591,47 @@ export function planPlacements(
 		const named = mine.length === 0 ? namedColumn(item, autoNames) : null
 		if (mine.length === 1) claim(i, mine[0] as number, 'named')
 		else if (mine.length > 1) poolOf.set(i, { columns: mine, promo: false })
-		else if (named !== null) claim(i, named, 'named')
-		else if (isPromo(item)) poolOf.set(i, { columns: promoColumns, promo: true })
+		else if (named !== null) {
+			claim(i, named, 'named')
+			const clash = titleClash(item, autoNames, named)
+			if (clash !== null) notes.set(i, clash)
+			const got = columnOf.get(i)
+			if (got !== undefined && 'none' in got) rest.push(i)
+		} else rest.push(i)
+	}
+	// FOLLOW THE CODE'S OLD COLUMN (the owner, 2026-11-01): a moment whose
+	// label finds no column, or one another moment has, goes where Arena
+	// already holds its foreground, when that is a named column of its own kind (WTG,
+	// POST; not a PROMO, which the queue below keeps by likeness) that no other
+	// moment has this service. After every name, so a name always wins.
+	for (const i of rest) {
+		const item = items[i] as LookbookItem
+		// Its foreground only: a background is shared by half the service, so
+		// where one sits says nothing about which moment a column is.
+		const piece = arenaCodes(item, map).find((c) => c.type === 'F')
+		const layer = piece === undefined ? undefined : layerOf(piece.type)
+		if (piece === undefined || layer === undefined) continue
+		const at = layer.slots.findIndex(
+			(s, c) =>
+				slotCode(s) === piece.code &&
+				!unnamed(autoNames[c] ?? '') &&
+				!isPromoName(autoNames[c] ?? '') &&
+				!reserved(layer, c + 1, status, map) &&
+				slotCell(layer, c + 1, status, map).kind === 'auto' &&
+				!takenBy.has(c) &&
+				!pinnedColumns.has(c),
+		)
+		if (at < 0) continue
+		const was = columnOf.get(i)
+		columnOf.delete(i)
+		claim(i, at, 'named')
+		const said = item.label === null || item.label.trim() === '' ? 'has no label' : `is labelled "${item.label.trim()}"`
+		notes.set(i, `${item.title.trim()} ${said}${was !== undefined && 'none' in was ? `, and ${was.detail.replace(/; place it by hand$/, '')}` : ''}; kept in ${names[at]?.trim() ?? ''}, where ${piece.code} already is`)
+	}
+	for (const i of rest) {
+		if (columnOf.has(i)) continue
+		const item = items[i] as LookbookItem
+		if (isPromo(item)) poolOf.set(i, { columns: promoColumns, promo: true })
 		// A foreground with no column of its own queues with the announcements
 		// (the owner, 2026-10-13).
 		else if (arenaCodes(item, map).some((c) => c.type === 'F' && c.want !== null)) poolOf.set(i, { columns: promoColumns, promo: true, oneOff: true })
@@ -888,7 +980,7 @@ export function planPlacements(
 		columns.set(i, where.column)
 		whys.set(i, where.why)
 	}
-	return { placements, unplaced, columns, whys, names, settled }
+	return { placements, unplaced, columns, whys, names, settled, notes }
 }
 
 /** The background the rest of the service uses (the owner, 2026-10-06): the
@@ -1105,16 +1197,21 @@ function stepFor(code: string, want: string, path: string | null, update: number
 	return { request: { code, want, clipIds, lookbookPath: path, allowLookbook: false, allowLive: [] }, what: `${code} into ${parts.join('; ')}` }
 }
 
-/** A clip to empty: where it is, and the code it must still hold when main
- *  empties it, so a slot that changed since the confirmation is left alone. */
-export type OldClip = { clipId: number; code: string; layer: string; column: number; columnName: string }
+/** A clip to empty: where it is, and what it must still hold when main empties
+ *  it (its code, or its clip name when it has none: `coded` false), so a slot
+ *  that changed since the confirmation is left alone. */
+export type OldClip = { clipId: number; code: string; coded: boolean; layer: string; column: number; columnName: string }
 
 /** Old foregrounds (the owner, 2026-10-05: "a clear old FGs button when
  *  updating all", asked, not done unasked): clips on HOLD FG whose code this
  *  run sheet does not use, so last week's announcements cannot be fired by
  *  mistake. Not one on screen, not one in a column named for something else
- *  (COUNTDOWN), not one without a code (not the lookbook's), and not one
- *  `excluding` names (an update is about to load into it). */
+ *  (COUNTDOWN), not one `excluding` names (an update is about to load into
+ *  it), and NEVER ONE OF THE MAIN FOUR (the owner, 2026-11-01: North's WTG was
+ *  emptied because a week's run sheet left it out). A clip with no code (not
+ *  the lookbook's: a service photo) only in a PROMO or a spare column past the
+ *  named ones (the owner, 2026-11-01: "Clear in PROMO and spare"), where it is
+ *  last week's; in a named column it is left alone. */
 export function oldForegrounds(
 	items: LookbookItem[],
 	status: ArenaStatus,
@@ -1127,10 +1224,37 @@ export function oldForegrounds(
 	const names = columnNamesOf(layer, status)
 	return layer.slots.flatMap((slot, i) => {
 		const code = slotCode(slot)
-		if (slot.state !== 'loaded' || code === null || today.has(code) || excluding.has(slot.id) || reserved(layer, i + 1, status, map)) return []
+		if (slot.state !== 'loaded' || excluding.has(slot.id) || reserved(layer, i + 1, status, map) || isMainFour(names[i] ?? '')) return []
+		if (code === null ? !promoOrSpare(layer, i, status) || slot.name.trim() === '' : today.has(code)) return []
 		// A fixed code is meant to be there, run sheet or not.
 		if (slotCell(layer, i + 1, status, map).kind === 'fixed') return []
-		return [{ clipId: slot.id, code, layer: layer.name, column: i + 1, columnName: unnamed(names[i] ?? '') ? `column ${i + 1}` : (names[i] ?? '') }]
+		return [{ clipId: slot.id, code: code ?? slot.name, coded: code !== null, layer: layer.name, column: i + 1, columnName: unnamed(names[i] ?? '') ? `column ${i + 1}` : (names[i] ?? '') }]
+	})
+}
+
+/** Whether main may empty a clip with no code: on HOLD FG, in a PROMO or a
+ *  spare column (`oldForegrounds`' rule, checked again where the path is built). */
+export function noCodeClearable(status: ArenaStatus, clipId: number): boolean {
+	const layer = layerFor(status, 'F')
+	const column = layer?.slots.findIndex((s) => s.id === clipId) ?? -1
+	return layer !== undefined && column >= 0 && promoOrSpare(layer, column, status) && !reserved(layer, column + 1, status)
+}
+
+/** One of the main four that no moment of this run sheet has (the owner,
+ *  2026-11-01: "keep what's there"): what its foreground clip holds, said on
+ *  the Lookbook so a week that leaves WTG out is seen, not silent. */
+export type Kept = { column: number; name: string; holds: string | null }
+
+export function keptColumns(items: LookbookItem[], status: ArenaStatus, map: HoldingMap = DEFAULT_MAP, pins: readonly Pin[] = []): Kept[] {
+	const layer = layerFor(status, 'F')
+	if (layer === undefined || items.length === 0) return []
+	const names = columnNamesOf(layer, status)
+	const held = new Set(holdersOf(planPlacements(items, status, map, pins)).keys())
+	return names.flatMap((name, c) => {
+		if (!isMainFour(name) || held.has(c)) return []
+		const slot = layer.slots[c]
+		const holds = slot === undefined || slot.state === 'empty' ? null : (slotCode(slot) ?? slot.name)
+		return [{ column: c + 1, name: name.trim(), holds }]
 	})
 }
 
@@ -1157,6 +1281,9 @@ export type Look = {
 	/** Where it lands (the owner, 2026-10-22: "no obvious idea what things are
 	 *  going where … UNLESS you know the arena layout"), or null with no column. */
 	lands: Landing | null
+	/** Said on its card: a label that clashes with its title, or a column kept
+	 *  by where its foreground already was (the owner, 2026-11-01). */
+	note: string | null
 }
 
 /** Where a moment lands: the column its piece (foreground, else background,
@@ -1176,7 +1303,7 @@ export type Landing = {
 
 /** Every run-sheet item as a look: what each of its codes is in Arena. */
 export function looksOf(items: LookbookItem[], status: ArenaStatus, marks: ReadonlySet<string>, sizes?: FileSizes, map: HoldingMap = DEFAULT_MAP, pins: readonly Pin[] = []): Look[] {
-	const { placements, unplaced, columns, whys, names, settled } = planPlacements(items, status, map, pins)
+	const { placements, unplaced, columns, whys, names, settled, notes } = planPlacements(items, status, map, pins)
 	const today = codesOn(items)
 	const landing = (i: number): Landing | null => {
 		const mine = placements.filter((p) => p.item === i)
@@ -1232,6 +1359,7 @@ export function looksOf(items: LookbookItem[], status: ArenaStatus, marks: Reado
 			// The lookbook having no file is the lookbook's to fix, not Arena's.
 			ready: codes.every((c) => c.state === 'ready' || c.state === 'not-arena' || c.state === 'no-file'),
 			lands: landing(i),
+			note: notes.get(i) ?? null,
 		}
 	})
 }
@@ -1390,13 +1518,11 @@ export function keyCodeOf(item: LookbookItem, map: HoldingMap = DEFAULT_MAP): st
 	return (codes.find((c) => c.type === 'F') ?? codes.find((c) => c.type === 'B') ?? codes[0])?.code ?? null
 }
 
-/** Where a moment may be moved to (the owner, 2026-10-22: "PROMO and spare
- *  columns"), by clip id: a PROMO column, or an unnamed one past the last named
- *  column, on the moved code's layer; never a column named for a moment (WTL,
- *  PRE, …), a reserved one, one the map gives to something else, or where it
- *  is now. A column another moment has is offered as a SWAP (the owner's pick:
- *  only the two change places), and only when the moment moving is itself in a
- *  PROMO or spare column, so the other never lands in a named one. */
+/** Where a moment may be moved to, by clip id: any column on the moved code's
+ *  layer (the owner, 2026-11-01; PROMO and spare only from 2026-10-22), never a
+ *  reserved one, one the map gives to something else, or where it is now. A
+ *  column another moment has is offered as a SWAP (the owner's pick: only the
+ *  two change places), when the moment moving has a column to swap with. */
 export function moveTargets(
 	items: LookbookItem[],
 	status: ArenaStatus,
@@ -1408,7 +1534,10 @@ export function moveTargets(
 	const layer = type === null ? undefined : layerFor(status, type)
 	const out = new Map<number, { column: number; swap: number | null }>()
 	if (layer === undefined) return out
-	const movable = (c: number) => movableColumn(layer, c, status, map)
+	// MOVE INTO ANY COLUMN (the owner, 2026-11-01): a named one too (End into
+	// POST, a WTG left out), swapping with its moment; never a reserved column
+	// or one the map gives to something else. Place n keeps to PROMO and spare.
+	const movable = (c: number) => !reserved(layer, c + 1, status, map) && slotCell(layer, c + 1, status, map).kind === 'auto'
 	const holders = holdersOf(planPlacements(items, status, map, pins))
 	const here = [...holders].find(([, i]) => i === what.item)?.[0]
 	layer.slots.forEach((slot, c) => {
