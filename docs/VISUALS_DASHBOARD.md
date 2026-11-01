@@ -1225,7 +1225,7 @@ where the rules decide (`planPlacements`' `because`, carried as `Landing.because
 disagree with the placement. Dev kiosk on the Mac over CDP against the stand-in widened to 17
 columns and North AM 1 Nov's run sheet; ⚠️ not against Arena or by finger.
 
-**Then the column sheet (branch `holding-sheet`, the owner's "yes, build it").** A sliders button on
+**Then the column sheet (on main since 2026-11-01, not in a build; the owner's "yes, build it").** A sliders button on
 every named column's heading on the Map opens that column's rule beside the grid
 (`src/renderer/components/ColumnSheet.tsx`), for anyone to read and Admin to change, saved at once
 as Settings' switches are: **Never touch this column** (every layer Leave alone); **What goes
