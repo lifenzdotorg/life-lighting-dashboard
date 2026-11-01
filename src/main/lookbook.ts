@@ -5,13 +5,15 @@
 // The decoders and their evidence are ../bridge/lookbook.ts; the comparison
 // is ../shared/media-check.ts.
 
-import { decodeItems, decodeServices, decodeWeeks, LOOKBOOK_ID, PLAN_ID } from '../bridge/lookbook.js'
+import { decodeItems, decodeServices, decodeWeeks, LOOKBOOK_ID, PLAN_ID, type LookbookWeek } from '../bridge/lookbook.js'
 import {
 	LOOKBOOK_DAYS_AHEAD,
 	LOOKBOOK_TIMEOUT_MS,
 	LOOKBOOK_URL,
 	nzDate,
 	PLAN_DAYS_AHEAD,
+	sameService,
+	serviceKind,
 	PLAN_DAYS_BACK,
 	type LookbookItem,
 	type LookbookRead,
@@ -88,6 +90,60 @@ export async function lookbookServiceForPlan(planId: unknown): Promise<LookbookR
 		if (found !== undefined) return { ok: true, value: found, at: Date.now() }
 	}
 	return { ok: true, value: null, at: Date.now() }
+}
+
+/** How many earlier weeks a Holding rule is shown against, and how many
+ *  days back they are looked for. The lookbook's "weeks" are one per service
+ *  (seen 2026-11-01), so they are picked by date and name, not counted. */
+export const EARLIER_COUNT = 3
+const EARLIER_DAYS = 35
+
+/** A week's services, cached as `lookbookServiceForPlan` caches them. */
+async function servicesOf(week: LookbookWeek): Promise<LookbookRead<LookbookService[]>> {
+	const hit = weekCache.get(week.id)
+	if (hit !== undefined && Date.now() - hit.at < WEEK_CACHE_MS) return { ok: true, value: hit.services, at: hit.at }
+	const r = await get(`/api/weeks/${week.id}/services`)
+	if (!r.ok) return { ok: false, detail: r.detail, at: Date.now() }
+	const s = decodeServices(r.body, week)
+	if (!s.ok) return { ok: false, detail: s.detail, at: Date.now() }
+	weekCache.set(week.id, { at: Date.now(), services: s.value })
+	return { ok: true, value: s.value, at: Date.now() }
+}
+
+/** The same service in the weeks before this one, newest first, up to
+ *  EARLIER_COUNT (the owner, 2026-11-01: a Holding rule shown against the last
+ *  few Sundays). Found by campus, time and name without its date. */
+export async function lookbookEarlier(serviceId: unknown): Promise<LookbookRead<LookbookService[]>> {
+	if (typeof serviceId !== 'string' || !LOOKBOOK_ID.test(serviceId)) return fail('not a lookbook service')
+	const weeks = await get('/api/weeks')
+	if (!weeks.ok) return fail(weeks.detail)
+	const decoded = decodeWeeks(weeks.body)
+	if (!decoded.ok) return fail(decoded.detail)
+	// The service itself: in a week near today, as the run order's are.
+	const now = new Date()
+	const near = decoded.value.filter((w) => w.date >= nzDate(now, -PLAN_DAYS_BACK) && w.date <= nzDate(now, PLAN_DAYS_AHEAD))
+	let service: LookbookService | undefined
+	for (const week of near) {
+		const r = await servicesOf(week)
+		if (!r.ok) return fail(r.detail)
+		service = r.value.find((s) => s.id === serviceId)
+		if (service !== undefined) break
+	}
+	if (service === undefined) return { ok: true, value: [], at: Date.now() }
+	const me = service
+	const since = new Date(Date.parse(`${me.date}T00:00:00Z`) - EARLIER_DAYS * 86_400_000).toISOString().slice(0, 10)
+	const kind = serviceKind(me.name)
+	const before = decoded.value
+		.filter((w) => w.date < me.date && w.date >= since && (serviceKind(w.name) === kind || serviceKind(w.name) === ''))
+		.sort((a, b) => b.date.localeCompare(a.date))
+	const out: LookbookService[] = []
+	for (const week of before) {
+		const r = await servicesOf(week)
+		if (!r.ok) return fail(r.detail)
+		out.push(...r.value.filter((s) => s.id !== me.id && s.date < me.date && sameService(s, me)))
+		if (out.length >= EARLIER_COUNT) break
+	}
+	return { ok: true, value: out.sort((a, b) => b.date.localeCompare(a.date)).slice(0, EARLIER_COUNT), at: Date.now() }
 }
 
 /** One service's run sheet, resolved to codes and files. */

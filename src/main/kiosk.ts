@@ -75,7 +75,7 @@ import type { ArenaCommandResult, ArenaSource, ArenaStatus } from '../shared/are
 import { arenaVersion } from '../shared/arena.js'
 import type { ShowList, ShowWriteResult } from '../shared/showfile-write.js'
 import { registerThumbnailScheme, serveLookbookThumbnails, serveThumbnails } from './arena-thumbnails.js'
-import { lookbookFileSize, lookbookFileUrl, lookbookItems, lookbookServiceForPlan, lookbookServices } from './lookbook.js'
+import { lookbookEarlier, lookbookFileSize, lookbookFileUrl, lookbookItems, lookbookServiceForPlan, lookbookServices } from './lookbook.js'
 import type { FileSizes, LookbookItem, LookbookRead, LookbookService } from '../shared/media-check.js'
 import { createPopouts, type Popouts } from './popout.js'
 import { lockPage, openInBrowser, reloadOnCrash } from './page-lock.js'
@@ -449,6 +449,9 @@ app.whenReady().then(() => {
 	)
 	ipcMain.handle('lookbook:items', (e, id: unknown): Promise<LookbookRead<LookbookItem[]>> | LookbookRead<LookbookItem[]> =>
 		fromOurs(e) ? lookbookItems(id) : { ok: false, detail: 'not from this app', at: Date.now() },
+	)
+	ipcMain.handle('lookbook:earlier', (e, id: unknown): Promise<LookbookRead<LookbookService[]>> | LookbookRead<LookbookService[]> =>
+		fromOurs(e) ? lookbookEarlier(id) : { ok: false, detail: 'not from this app', at: Date.now() },
 	)
 	// Fetching media the check found wrong (./media-fetch.ts): operator mode
 	// only, from the kiosk or a pop-out. The page names a code, a file name

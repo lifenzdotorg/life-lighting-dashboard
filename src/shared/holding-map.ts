@@ -23,6 +23,11 @@
 //     normal   the service's normal background (HOLD BG), whatever the item has
 //     leave    left alone: nothing placed, filled, updated or cleared there
 //     fixed    always this code, whatever the run sheet says
+// - What a column does on a week whose run sheet has nothing for it (`none`,
+//   the owner, 2026-11-01, from the Holding map research: "keep something in
+//   a column", WTG at North): keep what is there (never cleared), clear it
+//   with Clear old FGs, or put one code there. Unset, the main four (WTL,
+//   NSL, BIBLES, WTG) keep and the rest may be cleared.
 // - A code family (the two letters, campus then type: CF is Central's
 //   foregrounds, NB North's backgrounds) to a layer, or to none. Unset, the
 //   type letter decides as before: B, F and A to their layers, the rest none.
@@ -45,11 +50,17 @@ export const LAYER_KEYS: readonly LayerKey[] = ['B', 'F', 'A']
 export type Cell = { kind: 'auto' } | { kind: 'item' } | { kind: 'normal' } | { kind: 'leave' } | { kind: 'fixed'; code: string }
 export type CellKind = Cell['kind']
 
+/** A week with nothing for the column: keep what is there, clear it, or put
+ *  this code there. */
+export type WhenNone = 'keep' | 'clear' | { code: string }
+
 export type ColumnRule = {
 	/** The run-sheet words this column takes; unset is its default, empty
 	 *  takes nothing. */
 	takes?: string[]
 	cells?: Partial<Record<LayerKey, Cell>>
+	/** A week with nothing for it; unset is its default (`noneDefault`). */
+	none?: WhenNone
 }
 
 export type HoldingMap = {
@@ -81,6 +92,20 @@ export function ruleOf(map: HoldingMap, columnName: string): ColumnRule | undefi
 
 export function cellOf(map: HoldingMap, columnName: string, layer: LayerKey): Cell {
 	return ruleOf(map, columnName)?.cells?.[layer] ?? AUTO
+}
+
+// THE MAIN FOUR (the owner, 2026-11-01: "there should always be the main 4"):
+// standing pieces, in Arena every week whether or not the run sheet names them.
+const MAIN_FOUR = new Set(['WTL', 'NSL', 'BIBLES', 'WTG'])
+export const isMainFour = (name: string): boolean => MAIN_FOUR.has(columnKey(name))
+
+/** What a column does on a week with nothing for it, when the map says
+ *  nothing: the main four keep, the rest may be cleared. */
+export const noneDefault = (columnName: string): 'keep' | 'clear' => (isMainFour(columnName) ? 'keep' : 'clear')
+
+/** What a column does on a week with nothing for it. */
+export function noneOf(map: HoldingMap, columnName: string): WhenNone {
+	return ruleOf(map, columnName)?.none ?? noneDefault(columnName)
 }
 
 /** The words a column takes when they are set, or undefined for its default. */
@@ -135,9 +160,10 @@ export function withRule(map: HoldingMap, columnName: string, change: (rule: Col
 	const rule: ColumnRule = {
 		...(next.takes === undefined ? {} : { takes: next.takes }),
 		...(Object.keys(cells).length === 0 ? {} : { cells }),
+		...(next.none === undefined ? {} : { none: next.none }),
 	}
 	const columns = { ...map.columns }
-	if (rule.takes === undefined && rule.cells === undefined) delete columns[key]
+	if (rule.takes === undefined && rule.cells === undefined && rule.none === undefined) delete columns[key]
 	else columns[key] = rule
 	return { ...map, columns }
 }
@@ -192,7 +218,14 @@ export function holdingMapFrom(raw: unknown): HoldingMap | null {
 			}
 			if (Object.keys(cells).length > 0) rule.cells = cells
 		}
-		if (rule.takes !== undefined || rule.cells !== undefined) columns[k] = rule
+		if (v['none'] !== undefined) {
+			const none = v['none']
+			if (none === 'keep' || none === 'clear') rule.none = none
+			else if (isObject(none) && typeof none['code'] === 'string' && mediaCodeOf(none['code'])?.code === none['code'].trim().toUpperCase())
+				rule.none = { code: none['code'].trim().toUpperCase() }
+			else return null
+		}
+		if (rule.takes !== undefined || rule.cells !== undefined || rule.none !== undefined) columns[k] = rule
 	}
 	return { families, columns }
 }

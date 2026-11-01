@@ -329,6 +329,9 @@ build): the owner found the Holding map "not intuitive in the slightest"; resear
 their answers are in `docs/VISUALS_DASHBOARD.md` § The Holding map rethought (and the artifact it
 links). First piece: every Lookbook card and the Map's bar say why a moment lands where it does.
 401 tests and 291 Lua checks green; dev kiosk on the Mac against the stand-in only.
+Then the **column sheet** (branch `holding-sheet`, not merged): a column's rule opened from its
+heading on the Map, with "when a week has nothing for it" new in the Holding map and the same
+service's last three weeks shown against it. 404 tests green; dev kiosk on the Mac only.
 
 **2026-11-01: v1.9.0 tagged** at the owner's ask, with `holding-north` merged (below), nothing
 else since 1.8.2 (`docs/FIELD_TEST.md` § North's morning). Publishing the draft is the owner's.
@@ -769,8 +772,8 @@ Later, not tonight:
 ### TODO, in order
 
 0. **The Holding map rethought** (researched 2026-11-01): "why here" on every card **built**, on
-   main (not in a build); next, the column sheet on the Map, "every week?" after a
-   Move, then Settings as sentences;
+   main (not in a build); the column sheet on the Map **built** on branch `holding-sheet` (not
+   merged); next, "every week?" after a Move, then Settings as sentences;
    `docs/VISUALS_DASHBOARD.md` § The Holding map rethought. Before East, West, TGA or Tauranga get
    Arena: read their `WETA043`-style codes.
 0. **Noted for later (the owner, 2026-10-22, "not now"):** **A review of the Lookbook's wording

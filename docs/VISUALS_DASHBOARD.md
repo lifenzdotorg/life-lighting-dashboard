@@ -1225,6 +1225,29 @@ where the rules decide (`planPlacements`' `because`, carried as `Landing.because
 disagree with the placement. Dev kiosk on the Mac over CDP against the stand-in widened to 17
 columns and North AM 1 Nov's run sheet; ⚠️ not against Arena or by finger.
 
+**Then the column sheet (branch `holding-sheet`, the owner's "yes, build it").** A sliders button on
+every named column's heading on the Map opens that column's rule beside the grid
+(`src/renderer/components/ColumnSheet.tsx`), for anyone to read and Admin to change, saved at once
+as Settings' switches are: **Never touch this column** (every layer Leave alone); **What goes
+here** (the built-in rule in words, then this week's labels as chips to add or take away, and
+Another label); **When a week has nothing for it**, new in the Holding map (`none`, `noneOf`):
+Keep what's there, Let Clear old FGs empty it, or Put one code there (the clip's code now, or one
+typed); built in, the main four keep and the rest may be cleared, as since the morning;
+**Background** (built in, always the normal one, or only the moment's own); and **this week and
+the last three** of the same service (`lookbookEarlier`: same campus, time and name without its
+date, `sameService`), each saying what the rule as it is now puts there and why, against Arena's
+columns today. PROMO columns have no "what goes here" or "week with none" (they share a line);
+COUNTDOWN, VIDEO and BROADCAST say they are never touched. A code put there loads like a fixed
+code when no moment has the column (`why: 'fixed'`), is never offered by Clear old FGs, and the
+Lookbook's top panel says "WTG gets NF098" until it is in. **Choices taken without asking:**
+Settings › Holding map does not show "a week with none" yet (its sentences page is the next step);
+turning Never touch off puts every layer back to built in; the past weeks use today's pins only for
+this week. The lookbook's "weeks" are one per service (seen that day), so past ones are found by
+date (35 days) and name. Dev kiosk on the Mac over CDP against the stand-in (17 columns) and North
+AM's 1 Nov, 25, 18 and 11 Oct run sheets: WTG's sheet read 25 and 11 Oct "NF098 WTG, Labelled
+WTG", 1 Nov and 18 Oct "keeps what is there"; Put NF098 there made them "NF098" and the top
+"WTG gets NF098"; Back to built in emptied the map. ⚠️ Not against Arena or by finger.
+
 ## Clear old FGs (owner's ask, 2026-10-05)
 
 "A clear old FGs button when updating all, and note when an old FG is in and ask if they

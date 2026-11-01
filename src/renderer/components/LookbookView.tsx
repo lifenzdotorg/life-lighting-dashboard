@@ -39,17 +39,19 @@
 // as Update all's, never a second guess.
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, FileX, Grid3x3, LayoutGrid, Minus, Rows3, Square, RefreshCw, Undo2, X } from 'lucide-react'
+import { Check, FileX, Grid3x3, LayoutGrid, Minus, Rows3, Square, RefreshCw, SlidersHorizontal, Undo2, X } from 'lucide-react'
 
 import { thumbnailUrl, type ArenaLayer, type ArenaStatus } from '../../shared/arena.js'
 import { checkAnnouncements, sessionOf, wantedAnnouncements } from '../../shared/announcements.js'
 import { COLUMN_NAMES, codesOn, columnNamesOf, holdingLayers, keptColumns, layerKeyOf, lookSteps, looksOf, mergeSteps, slotCode, slotMark, type CodeState, type Landing, type Look, type Placement } from '../../shared/holding.js'
 import { lookbookThumbUrl, mediaCodeOf, type LookbookItem } from '../../shared/media-check.js'
+import { ruleOf } from '../../shared/holding-map.js'
 import type { Channel } from '../../shared/reading.js'
 import { useMediaCheck, type MediaCheckState } from '../useMediaCheck.js'
 import { useOperator } from '../mode.js'
 import { ArenaReading } from './ArenaView.js'
 import { FileCompare, ReplaceButton, ThereButton, needsLook } from './FileCompare.js'
+import { ColumnSheet } from './ColumnSheet.js'
 import { Confirm, FetchWords, ServiceLine, SmallButton, fetchShort, under } from './MediaCheck.js'
 import { Button } from './ui.js'
 import { chipLabel, formatAge, staleContent } from './vocabulary.js'
@@ -230,7 +232,7 @@ export function Lookbook({ status, ageMs, now, onBack }: { status: ArenaStatus; 
 							<span key={k.column}>
 								{i > 0 && ' · '}
 								<b>{k.name}</b>{' '}
-								{k.holds === null ? <span className="text-warn">is empty</span> : <>keeps {k.holds}</>}
+								{k.puts !== null && k.puts !== k.holds ? <>gets {k.puts}</> : k.holds === null ? <span className="text-warn">is empty</span> : <>keeps {k.holds}</>}
 							</span>
 						))}
 					</p>
@@ -830,6 +832,8 @@ function LandingMap({
 	names: string[]
 }) {
 	const [chosen, setChosen] = useState<number | null>(null)
+	// The column whose rule is open beside the grid (`ColumnSheet`), from 1.
+	const [ruleColumn, setRuleColumn] = useState<number | null>(null)
 	const [ticked, setTicked] = useState<ReadonlySet<number>>(new Set())
 	const [start, setStart] = useState<number | null>(null)
 	const [said, setSaid] = useState<string | null>(null)
@@ -1061,7 +1065,7 @@ function LandingMap({
 		)
 
 	return (
-		<div ref={rootRef} className="mx-auto flex max-w-full flex-col gap-2">
+		<div ref={rootRef} className="relative mx-auto flex max-w-full flex-col gap-2">
 			<div ref={topRef} className="flex flex-col gap-2">
 				<div className="flex flex-wrap items-center gap-2">
 					<span role="radiogroup" aria-label="Map size" className="inline-flex rounded-ctl bg-booth-raise p-1">
@@ -1124,6 +1128,8 @@ function LandingMap({
 						const swap = lit.get(c)
 						const landing = landsAt.get(c)
 						const isTicked = at !== undefined && ticked.has(at.item)
+						// A named column's rule opens from its heading (`ColumnSheet`).
+						const ruled = !thin(c) && !unnamedColumn(names[c - 1] ?? '')
 						return (
 							<div
 								key={c}
@@ -1132,7 +1138,7 @@ function LandingMap({
 								onClick={() => click(c)}
 								title={unnamedColumn(names[c - 1] ?? '') ? `Column ${c}` : names[c - 1]}
 								style={{ height: headH }}
-								className={`relative flex min-w-0 cursor-pointer select-none flex-col items-center justify-center rounded-ctl pr-1 text-center ${operator && at !== undefined && !thin(c) ? 'pl-7' : 'pl-1'} ${me || landing !== undefined ? 'bg-accent text-accent-ink' : drag?.over === c && lit.has(c) ? 'bg-accent-hi/30' : lit.has(c) ? 'ring-2 ring-accent-hi' : start === c ? 'ring-2 ring-accent-hi' : 'hover:bg-booth-hover'}`}
+								className={`relative flex min-w-0 cursor-pointer select-none flex-col items-center justify-center rounded-ctl ${ruled ? 'pr-8' : 'pr-1'} text-center ${operator && at !== undefined && !thin(c) ? 'pl-7' : 'pl-1'} ${me || landing !== undefined ? 'bg-accent text-accent-ink' : drag?.over === c && lit.has(c) ? 'bg-accent-hi/30' : lit.has(c) ? 'ring-2 ring-accent-hi' : start === c ? 'ring-2 ring-accent-hi' : 'hover:bg-booth-hover'}`}
 							>
 								<span className={`w-full truncate text-xs font-bold ${me || landing !== undefined ? '' : /^promo/i.test((names[c - 1] ?? '').trim()) ? 'text-accent-hi' : 'text-booth-dim'}`}>{thin(c) ? '' : unnamedColumn(names[c - 1] ?? '') ? c : names[c - 1]}</span>
 								<span className={`w-full truncate text-xs ${me || landing !== undefined ? '' : at !== undefined && states.get(at.item) === 'needs' ? 'text-warn' : 'text-booth-ink'}`}>
@@ -1151,6 +1157,23 @@ function LandingMap({
 										className={`absolute top-0.5 left-0.5 grid size-6 place-items-center rounded-[3px] border-2 ${isTicked ? 'border-accent-hi bg-accent-hi text-black' : 'border-booth-edge bg-booth-ground/70'}`}
 									>
 										{isTicked && <Check size={14} strokeWidth={3} aria-hidden />}
+									</button>
+								)}
+								{ruled && (
+									<button
+										type="button"
+										aria-label={`What goes in ${names[c - 1]?.trim()}, every week`}
+										aria-pressed={ruleColumn === c}
+										title={`What goes in ${names[c - 1]?.trim()}, every week`}
+										onPointerDown={(e) => e.stopPropagation()}
+										onClick={(e) => {
+											e.stopPropagation()
+											setRuleColumn(ruleColumn === c ? null : c)
+										}}
+										className={`absolute top-0.5 right-0.5 grid size-7 place-items-center rounded-[3px] ${ruleColumn === c ? 'bg-accent-hi text-black' : 'text-booth-dim hover:bg-booth-hover hover:text-booth-ink'}`}
+									>
+										<SlidersHorizontal size={14} aria-hidden />
+										{ruleOf(m.map, names[c - 1] ?? '') !== undefined && <span className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-accent-hi" />}
 									</button>
 								)}
 							</div>
@@ -1176,6 +1199,7 @@ function LandingMap({
 					))}
 				</div>
 			</div>
+			{ruleColumn !== null && <ColumnSheet m={m} status={status} column={ruleColumn} name={(names[ruleColumn - 1] ?? '').trim()} operator={operator} onClose={() => setRuleColumn(null)} />}
 			{operator && moved.length > 0 && (
 				<p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-booth-dim">
 					<span>Moved for this service:</span>

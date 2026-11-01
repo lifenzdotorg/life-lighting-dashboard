@@ -19,6 +19,7 @@ import {
 	sameMarkFrom,
 	sameMarksFrom,
 } from '../dist/src/shared/media-check.js'
+import { sameService, serviceKind } from '../dist/src/shared/media-check.js'
 
 // Two items as the lookbook sent them for Central AM, 2026-10-04.
 const ITEMS = [
@@ -320,4 +321,14 @@ test("a copy's marks, as Windows, macOS and the browsers write them, and not a y
 	assert.equal(isCopyName('CF449-Sunday-Easter (2026).png'), false)
 	assert.equal(isCopyName('CF449-Sunday-Bibles.png'), false)
 	assert.equal(versionOf('CF449-Sunday-Easter (2026)'), null)
+})
+
+test('the same service in another week: campus, time and its name without the date (a Holding rule shown against past Sundays)', () => {
+	assert.equal(serviceKind('North AM 1st November'), 'north am')
+	assert.equal(serviceKind('North Team Night (13 Oct)'), 'north team night')
+	assert.equal(serviceKind('Central PM 25th October'), 'central pm')
+	const svc = (name, date, time = '09:00', campus = 'north') => ({ id: name + date, name, date, time, campus, planId: null })
+	assert.equal(sameService(svc('North AM 1st November', '2026-11-01'), svc('North AM 25th October', '2026-10-25')), true)
+	assert.equal(sameService(svc('North AM 1st November', '2026-11-01'), svc('North Team Night (13 Oct)', '2026-10-13', '19:00')), false)
+	assert.equal(sameService(svc('Central AM 1st November', '2026-11-01', '09:00', 'central'), svc('Central PM 1st November', '2026-11-01', '18:00', 'central')), false)
 })
