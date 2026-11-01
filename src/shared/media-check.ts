@@ -412,6 +412,25 @@ export function offeredServices(services: LookbookService[], today: string, camp
 		.sort((a, b) => Number(ours(b)) - Number(ours(a)) || a.date.localeCompare(b.date) || (a.time ?? '').localeCompare(b.time ?? '') || a.name.localeCompare(b.name))
 }
 
+/** A service's kind, its name without the date: `North AM 1st November` is
+ *  `north am`, `North Team Night (13 Oct)` is `north team night`. */
+export function serviceKind(name: string): string {
+	return name
+		.toLowerCase()
+		.replace(/\([^)]*\)/g, ' ')
+		.replace(/\b\d{1,2}(?:st|nd|rd|th)?\b/g, ' ')
+		.replace(/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim()
+}
+
+/** Whether two services are the same one in different weeks: the same
+ *  campus, time and kind (North AM on 25 Oct and on 1 Nov). Used to show what
+ *  a Holding rule did on the last few Sundays (the owner, 2026-11-01). */
+export function sameService(a: LookbookService, b: LookbookService): boolean {
+	return a.campus.toLowerCase() === b.campus.toLowerCase() && (a.time ?? '') === (b.time ?? '') && serviceKind(a.name) === serviceKind(b.name) && serviceKind(a.name) !== ''
+}
+
 /** The New Zealand date, `2026-10-04`, plus `days`: the lookbook's dates are
  *  New Zealand days. */
 export function nzDate(at: Date, days = 0): string {

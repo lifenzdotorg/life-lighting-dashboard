@@ -169,6 +169,9 @@ const api = {
 	 *  when the lookbook has none for it. */
 	lookbookServiceForPlan: (planId: string): Promise<LookbookRead<LookbookService | null>> => ipcRenderer.invoke('lookbook:for-plan', planId),
 	lookbookItems: (serviceId: string): Promise<LookbookRead<LookbookItem[]>> => ipcRenderer.invoke('lookbook:items', serviceId),
+	/** The same service in the weeks before, newest first (a Holding rule
+	 *  shown against the last few Sundays). */
+	lookbookEarlier: (serviceId: string): Promise<LookbookRead<LookbookService[]>> => ipcRenderer.invoke('lookbook:earlier', serviceId),
 	/** Fetch a code the media check found wrong: copy the lookbook's file
 	 *  from the graphics folder, and load it into `clipId` unless that is null.
 	 *  Operator mode only. Sent is not done: `mediaFetches` says how it goes,

@@ -85,7 +85,7 @@
 import type { ArenaLayer, ArenaSlot, ArenaStatus } from './arena.js'
 import { TYPE_NAMES, fileStem, lookbookStem, markedRight, mediaCodeOf, sameFile, type FileSizes, type LookbookItem } from './media-check.js'
 import type { FetchRequest } from './media-fetch.js'
-import { DEFAULT_MAP, LAYER_KEYS, cellOf, columnKey, layerOfCode, takesItem, takesOf, type HoldingMap, type LayerKey } from './holding-map.js'
+import { DEFAULT_MAP, LAYER_KEYS, cellOf, columnKey, layerOfCode, noneOf, takesItem, takesOf, type HoldingMap, type LayerKey } from './holding-map.js'
 
 /** Each type's layer, by name. The A-screen layer was PRE & POST until the
  *  owner renamed it A SCREEN BG (2026-10-05); a campus not yet renamed still
@@ -457,8 +457,8 @@ function titleClash(item: LookbookItem, names: string[], column: number): string
 // WTL, NSL, BIBLES and WTG are standing pieces, in Arena every week whether or
 // not the run sheet names them. A week that does not keeps what is there (and
 // the Lookbook says so, `keptColumns`), and Clear old FGs never empties them.
-const MAIN_FOUR = new Set(['WTL', 'NSL', 'BIBLES', 'WTG'])
-const isMainFour = (name: string) => MAIN_FOUR.has(norm(name))
+// Since the same day that is their default in the Holding map (`noneOf`): a
+// booth may make any column keep, clear, or take one code on such a week.
 
 /** A clip past the named columns, or in a PROMO: where last week's promos and
  *  one-offs sit, so where a clip with no code (a service photo) may be cleared
@@ -783,6 +783,33 @@ export function planPlacements(
 	// one-off's code sitting there is about to be replaced, so it is not
 	// "already on its layer".
 	const fixed = fixedPlacements(items, status, map)
+	// A WEEK WITH NOTHING FOR A COLUMN (the Holding map's `none`, the owner,
+	// 2026-11-01): a column set to one code gets it when no moment has the column.
+	const heldNow = new Set([...columnOf.values()].flatMap((w) => ('none' in w ? [] : [w.column])))
+	for (const [c, name] of names.entries()) {
+		const none = unnamed(name) || heldNow.has(c) ? null : noneOf(map, name)
+		if (none === null || typeof none !== 'object') continue
+		const type = layerOfCode(map, none.code)
+		const layer = type === null ? undefined : layerOf(type)
+		const slot = layer?.slots[c]
+		if (layer === undefined || slot === undefined || slotCode(slot) === none.code || reserved(layer, c + 1, status, map) || slotCell(layer, c + 1, status, map).kind !== 'auto') continue
+		const file = items.map((it) => it.files[none.code]).find((f) => f !== undefined)
+		fixed.push({
+			item: -1,
+			title: `${name.trim()} on a week with none: ${none.code}`,
+			label: null,
+			code: none.code,
+			want: file === undefined ? none.code : lookbookStem(file),
+			lookbookPath: file ?? '',
+			layer: layer.name,
+			column: c + 1,
+			columnName: columnNamesOf(layer, status)[c] ?? '',
+			clipId: slot.id,
+			replaces: slot.state === 'empty' ? null : { code: slotCode(slot), name: slot.name },
+			why: 'fixed',
+			live: slot.state === 'playing',
+		})
+	}
 	const targets = new Set(fixed.map((p) => p.clipId))
 	for (const [i, where] of columnOf) {
 		if ('none' in where) continue
@@ -1265,7 +1292,9 @@ export function oldForegrounds(
 	const names = columnNamesOf(layer, status)
 	return layer.slots.flatMap((slot, i) => {
 		const code = slotCode(slot)
-		if (slot.state !== 'loaded' || excluding.has(slot.id) || reserved(layer, i + 1, status, map) || isMainFour(names[i] ?? '')) return []
+		// The main four keep (and any column the Holding map says keeps, or
+		// puts one code in): never cleared.
+		if (slot.state !== 'loaded' || excluding.has(slot.id) || reserved(layer, i + 1, status, map) || noneOf(map, names[i] ?? '') !== 'clear') return []
 		if (code === null ? !promoOrSpare(layer, i, status) || slot.name.trim() === '' : today.has(code)) return []
 		// A fixed code is meant to be there, run sheet or not.
 		if (slotCell(layer, i + 1, status, map).kind === 'fixed') return []
@@ -1284,7 +1313,13 @@ export function noCodeClearable(status: ArenaStatus, clipId: number): boolean {
 /** One of the main four that no moment of this run sheet has (the owner,
  *  2026-11-01: "keep what's there"): what its foreground clip holds, said on
  *  the Lookbook so a week that leaves WTG out is seen, not silent. */
-export type Kept = { column: number; name: string; holds: string | null }
+export type Kept = {
+	column: number
+	name: string
+	holds: string | null
+	/** The code the Holding map puts there on such a week, or null to keep. */
+	puts: string | null
+}
 
 export function keptColumns(items: LookbookItem[], status: ArenaStatus, map: HoldingMap = DEFAULT_MAP, pins: readonly Pin[] = []): Kept[] {
 	const layer = layerFor(status, 'F')
@@ -1292,10 +1327,11 @@ export function keptColumns(items: LookbookItem[], status: ArenaStatus, map: Hol
 	const names = columnNamesOf(layer, status)
 	const held = new Set(holdersOf(planPlacements(items, status, map, pins)).keys())
 	return names.flatMap((name, c) => {
-		if (!isMainFour(name) || held.has(c)) return []
+		const none = unnamed(name) || reserved(layer, c + 1, status, map) ? 'clear' : noneOf(map, name)
+		if (none === 'clear' || held.has(c)) return []
 		const slot = layer.slots[c]
 		const holds = slot === undefined || slot.state === 'empty' ? null : (slotCode(slot) ?? slot.name)
-		return [{ column: c + 1, name: name.trim(), holds }]
+		return [{ column: c + 1, name: name.trim(), holds, puts: none === 'keep' ? null : none.code }]
 	})
 }
 

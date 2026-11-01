@@ -25,6 +25,7 @@ import {
 	slotMark,
 	updatePlan,
 } from '../dist/src/shared/holding.js'
+import { holdingMapFrom, noneOf, withRule } from '../dist/src/shared/holding-map.js'
 
 // The owner's Central composition, 2026-10-05, with its columns named by the
 // pattern (the owner: "happy to make all campuses conform"). Files under Media\AM.
@@ -937,7 +938,7 @@ test('North, 1 Nov: End labelled "Walk In" goes in POST by its title, and its ca
 
 test('North, 1 Nov: WTG, left off the run sheet, keeps NF098 and is said; Clear old FGs leaves it (the owner, 2026-11-01)', () => {
 	const s = northArena()
-	assert.deepEqual(keptColumns(NORTH, s), [{ column: 8, name: 'WTG', holds: 'NF098' }])
+	assert.deepEqual(keptColumns(NORTH, s), [{ column: 8, name: 'WTG', holds: 'NF098', puts: null }])
 	assert.equal(planPlacements(NORTH, s).placements.some((p) => p.layer === 'HOLD FG' && p.column === 8), false)
 	const old = oldForegrounds(NORTH, s)
 	assert.equal(old.some((c) => c.code === 'NF098'), false)
@@ -946,7 +947,7 @@ test('North, 1 Nov: WTG, left off the run sheet, keeps NF098 and is said; Clear 
 	assert.deepEqual(old.map((c) => c.code), ['NF119', 'NF105', 'NF220', 'Service Photo 25 Oct'])
 	// An empty one of the main four is said as empty.
 	s.layers[2].slots[7] = empty()
-	assert.deepEqual(keptColumns(NORTH, s), [{ column: 8, name: 'WTG', holds: null }])
+	assert.deepEqual(keptColumns(NORTH, s), [{ column: 8, name: 'WTG', holds: null, puts: null }])
 })
 
 test('every placed moment says why it lands there, in a card\'s words (the owner, 2026-11-01: the "why here" line)', () => {
@@ -979,6 +980,45 @@ test('every placed moment says why it lands there, in a card\'s words (the owner
 	// The Holding map's own column says so.
 	const mapped = planPlacements(giving, s, { families: {}, columns: { WTG: { takes: ['Giving'] } } })
 	assert.equal(mapped.because.get(giving.length - 1), "This booth's Holding map sends it to WTG")
+})
+
+test('a week with nothing for a column: keep, clear, or one code, as the Holding map says (the owner, 2026-11-01)', () => {
+	const s = northArena()
+	// Built in: the main four keep, the rest may be cleared.
+	assert.equal(noneOf({ families: {}, columns: {} }, 'WTG'), 'keep')
+	assert.equal(noneOf({ families: {}, columns: {} }, 'PRE'), 'clear')
+	// WTG set to NF098: already there, so nothing to load, and said as kept.
+	const put = withRule({ families: {}, columns: {} }, 'WTG', (r) => ({ ...r, none: { code: 'NF098' } }))
+	assert.equal(planPlacements(NORTH, s, put).placements.some((p) => p.column === 8 && p.layer === 'HOLD FG'), false)
+	assert.deepEqual(keptColumns(NORTH, s, put), [{ column: 8, name: 'WTG', holds: 'NF098', puts: 'NF098' }])
+	// Emptied since: NF098 goes back in, and the Lookbook says WTG gets it.
+	s.layers[2].slots[7] = empty()
+	const back = planPlacements(NORTH, s, put).placements.find((p) => p.column === 8 && p.layer === 'HOLD FG')
+	assert.equal(back?.code, 'NF098')
+	assert.equal(back?.why, 'fixed')
+	assert.deepEqual(keptColumns(NORTH, s, put), [{ column: 8, name: 'WTG', holds: null, puts: 'NF098' }])
+	// A week that has its own WTG item: the item, not the code.
+	const giving = [...NORTH, north('Welcome', 'WTG', ['NB044', 'NF221'])]
+	assert.equal(planPlacements(giving, s, put).placements.find((p) => p.column === 8 && p.layer === 'HOLD FG')?.code, 'NF221')
+	// WTG set to clear: Clear old FGs offers NF098 after all.
+	const t = northArena()
+	const clear = withRule({ families: {}, columns: {} }, 'WTG', (r) => ({ ...r, none: 'clear' }))
+	assert.equal(oldForegrounds(NORTH, t, new Set(), clear).some((c) => c.code === 'NF098'), true)
+	assert.deepEqual(keptColumns(NORTH, t, clear), [])
+	// POST set to keep: last week's Walk Out is not offered (End is POST's this
+	// week, so it is the item's anyway; PRE's NF119 shows the rule).
+	const keep = withRule({ families: {}, columns: {} }, 'PRE', (r) => ({ ...r, none: 'keep' }))
+	assert.equal(oldForegrounds(NORTH, t, new Set(), keep).some((c) => c.code === 'NF119'), false)
+	assert.equal(oldForegrounds(NORTH, t).some((c) => c.code === 'NF119'), true)
+})
+
+test('the Holding map keeps "a week with none" through storage and files, and refuses a bad one', () => {
+	const map = withRule(withRule({ families: {}, columns: {} }, 'WTG', (r) => ({ ...r, none: { code: 'NF098' } })), 'PRE', (r) => ({ ...r, none: 'keep' }))
+	assert.deepEqual(holdingMapFrom(JSON.parse(JSON.stringify(map))), map)
+	assert.equal(holdingMapFrom({ families: {}, columns: { WTG: { none: 'sometimes' } } }), null)
+	assert.equal(holdingMapFrom({ families: {}, columns: { WTG: { none: { code: 'NF09' } } } }), null)
+	// Back to built in drops the rule whole.
+	assert.deepEqual(withRule(map, 'WTG', () => ({})).columns.WTG, undefined)
 })
 
 test("a moment whose label finds no column goes where its foreground already is, after every name (the owner, 2026-11-01)", () => {
