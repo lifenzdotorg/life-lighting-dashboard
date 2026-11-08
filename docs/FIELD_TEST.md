@@ -93,6 +93,11 @@ more than a description of it.
 
 Tick what you saw; anything odd is worth a line.
 
+**1.9.1** (2026-11-08): the Lookbook says why each moment lands where it does, and each column's
+rule opens from its heading on the Map (§ Why here and the column sheet, below); the repos moved to
+lifenzdotorg. The first release a 1.9.0 booth finds through GitHub's redirect from the old repo:
+check one booth is offered it. Published here only.
+
 **1.9.0** (2026-11-01): Holding after North's morning: the title decides PRE and POST, the main
 four kept and never cleared, service photos cleared, a moment following its old column, Move into
 any column (§ North's morning, below). Published here only.
@@ -218,6 +223,14 @@ sections below.
 - [ ] **Tick** two moments, tap a column: the headings show where each lands; **Place 2**; a column on screen is skipped
 - [ ] **Undo** after a move (one tap) and after a Load (two taps): each clip's old file back, an empty one left and said
 - [ ] **Put back** on the Map: tap a moved moment, Put back on the bar; or the list under the grid (1.8.2)
+
+**Why here and the column sheet** (1.9.1; `docs/VISUALS_DASHBOARD.md` § The Holding map rethought)
+- [ ] A booth on 1.9.0 is offered 1.9.1 (the updater through the repo's move to lifenzdotorg)
+- [ ] Every card in the Lookbook: a **Why** line under Lands in ("Labelled WTL", "Its title, "Doors Open", means PRE", "An announcement, so in line for PROMO: 2nd in line"); the Map's bar says the same for a tapped moment
+- [ ] On the Map, the sliders button on a column's heading opens "WTG, every week" beside the grid; a volunteer reads it, only Admin changes it
+- [ ] "This week and the last 3" lists this service's earlier Sundays and what landed in that column
+- [ ] WTG set to **Put NF098 there** on a week with no Giving item: the top says "WTG gets NF098" until it is in; Update all loads it; **Back to built in** puts it back
+- [ ] A column set to **Let Clear old FGs empty it**: its old FG is offered by Clear old FGs
 
 **North's morning** (1.9.0; the owner's answers, 2026-11-01; `docs/VISUALS_DASHBOARD.md` § North's morning)
 - [ ] An End labelled "Walk In" (or a Doors Open labelled "Walk Out") lands by its title, in POST (PRE), and its card says so in orange

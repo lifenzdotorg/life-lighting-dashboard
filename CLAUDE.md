@@ -324,6 +324,11 @@ run: one kiosk per computer, so the second only focuses the first.
 
 ## Next session starts here
 
+**2026-11-08: v1.9.1 tagged** at the owner's ask ("happy to go minor versions like this"): the
+"why here" line, the column sheet, and the repos' move to lifenzdotorg (`docs/FIELD_TEST.md`
+§ Why here and the column sheet). The first release a 1.9.0 booth must find through GitHub's
+redirect from lifenzrpewh. Publishing the draft is the owner's.
+
 **2026-11-01: the Holding map researched, and "why here" built** (merged into main, not in a
 build): the owner found the Holding map "not intuitive in the slightest"; research, a proposal and
 their answers are in `docs/VISUALS_DASHBOARD.md` § The Holding map rethought (and the artifact it
