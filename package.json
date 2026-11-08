@@ -72,7 +72,7 @@
 		"publish": [
 			{
 				"provider": "github",
-				"owner": "lifenzrpewh",
+				"owner": "lifenzdotorg",
 				"repo": "life-lighting-dashboard",
 				"releaseType": "release"
 			}

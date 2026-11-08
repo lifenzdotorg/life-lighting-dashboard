@@ -18,7 +18,7 @@
    full strength: they are news, and nothing in the palette may be mistaken
    for them.
 
-   The values themselves live in life-look (github.com/lifenzrpewh/life-look, private),
+   The values themselves live in life-look (github.com/lifenzdotorg/life-look, private),
    shared with the Cue Manager so the two read as one family (it is the Cue view here).
    ./look.css is a committed copy: `npm run look:sync` pulls the latest tag, `npm run
    look:check` says if it was edited here or is behind. Never edit it here, and never put

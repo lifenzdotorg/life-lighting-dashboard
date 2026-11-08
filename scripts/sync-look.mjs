@@ -13,7 +13,7 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
-const REPO = 'lifenzrpewh/life-look'
+const REPO = 'lifenzdotorg/life-look'
 const FILE = 'look.css'
 
 const args = process.argv.slice(2)

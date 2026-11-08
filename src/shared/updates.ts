@@ -2,7 +2,7 @@
 // it prompt to auto update, or a check updates button in the settings"): what
 // main's updater (../main/updates.ts) last knew, for the bar and Settings.
 //
-// WHERE THEY COME FROM: this repo's own releases, lifenzrpewh/life-lighting-dashboard,
+// WHERE THEY COME FROM: this repo's own releases, lifenzdotorg/life-lighting-dashboard,
 // public since 2026-10-13 (the owner, 2026-10-14: the booths sat on 1.1.0 because
 // the separate paua-releases repo, there while this one was private, had only
 // drafts after it, while the releases published here were never read). The
@@ -47,7 +47,7 @@ export const FIRST_CHECK_MS = 60 * 1000
 
 /** Where a person downloads a build by hand: the Mac, or when the updater
  *  cannot. */
-export const RELEASES_PAGE = 'https://github.com/lifenzrpewh/life-lighting-dashboard/releases/latest'
+export const RELEASES_PAGE = 'https://github.com/lifenzdotorg/life-lighting-dashboard/releases/latest'
 
 /** The state in a few words, for Settings. */
 export function updateWords(u: UpdateState, version: string): string {

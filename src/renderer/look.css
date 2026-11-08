@@ -1,5 +1,5 @@
 /* life-look v1.0.0, copied by scripts/sync-look.mjs. Don't edit it here: change look.css in
-   github.com/lifenzrpewh/life-look, tag a new version, then run `npm run look:sync` in each app. */
+   github.com/lifenzdotorg/life-look, tag a new version, then run `npm run look:sync` in each app. */
 /* The LIFE look: the values every LIFE production app draws with (Pāua, the lighting
    dashboard; the Cue Manager PWA, visuals-song-comms). The rules for using them are in
    README.md. Each app maps these onto its own Tailwind tokens (its `@theme`), so the
